@@ -1533,11 +1533,25 @@ class DockerBuilder:
                 )
 
     def populate_wheels(self, image: DockerImage) -> None:
-        """Copy required wheels to the docker build context's wheels/ dir.
+        """Atomically populate the docker build context's wheels/ dir.
 
         Sources (in priority order): the repo-local ``dist/`` first, then the
         shared NeoAxios wheel cache (``$NEOAXIOS_WHEEL_CACHE``). De-duplicates
         by filename. See ``_find_wheels`` for the rationale.
+
+        Atomicity: copies wheels into a sibling ``wheels.staging.<pid>/``
+        directory, then atomically renames it onto ``wheels/``.  An interrupt
+        (Ctrl-C, kill) before the rename leaves the existing ``wheels/``
+        untouched; an interrupt after the rename leaves a fully-populated
+        directory.  ``wheels/`` is never observed in a half-populated state,
+        which previously caused downstream ``docker build`` to bake a
+        partial wheel set into the image and surfaced as misleading uv
+        "package not found" resolution errors.
+
+        Self-healing: every call begins by sweeping orphan
+        ``wheels.staging.*`` siblings (any PID, not just the current one),
+        so a staging dir left over from a prior interrupted run cleans
+        itself up on the next build.
 
         Args:
             image: DockerImage to populate wheels for
@@ -1545,35 +1559,56 @@ class DockerBuilder:
         if not image.wheel_dependencies:
             return
 
-        # Wheels go in context directory (where Dockerfile COPY can find them)
         wheels_dir = image.context / "wheels"
 
-        # Clear stale wheels first to prevent using outdated cached wheels
-        # from interrupted builds (fixes Docker layer cache issues)
-        if wheels_dir.exists():
-            shutil.rmtree(wheels_dir)
-        wheels_dir.mkdir(exist_ok=True)
+        # Self-heal: remove any orphan staging dirs from prior interrupted
+        # runs (any PID).  Defensive against rmtree partial failures.
+        for stale in image.context.glob("wheels.staging.*"):
+            if stale.is_dir():
+                shutil.rmtree(stale, ignore_errors=True)
 
-        for wheel_prefix in image.wheel_dependencies:
-            for wheel_file in self._find_wheels(wheel_prefix):
-                dest = wheels_dir / wheel_file.name
-                # _find_wheels already de-dupes by filename; this guard only
-                # matters when two different prefixes happen to resolve to the
-                # same wheel file (rare but defensible).
-                if dest.exists():
-                    continue
-                shutil.copy2(wheel_file, dest)
+        staging_dir = image.context / f"wheels.staging.{os.getpid()}"
+        staging_dir.mkdir()
+
+        try:
+            for wheel_prefix in image.wheel_dependencies:
+                for wheel_file in self._find_wheels(wheel_prefix):
+                    dest = staging_dir / wheel_file.name
+                    # _find_wheels already de-dupes by filename; this guard
+                    # only matters when two different prefixes happen to
+                    # resolve to the same wheel file.
+                    if dest.exists():
+                        continue
+                    shutil.copy2(wheel_file, dest)
+
+            # Atomic flip.  Brief window where wheels/ is missing, but it
+            # is never observed half-populated.  rename(2) is atomic on
+            # POSIX when source and destination are on the same filesystem,
+            # which sibling directories always are.
+            if wheels_dir.exists():
+                shutil.rmtree(wheels_dir)
+            staging_dir.rename(wheels_dir)
+        except BaseException:
+            # Includes KeyboardInterrupt — sweep our staging dir so the
+            # next run starts clean even if self-heal somehow misses it.
+            if staging_dir.exists():
+                shutil.rmtree(staging_dir, ignore_errors=True)
+            raise
 
     def cleanup_wheels(self, image: DockerImage) -> None:
-        """Remove wheels/ directory after build.
+        """Remove wheels/ directory and any orphan staging dirs after build.
 
         Args:
             image: DockerImage to cleanup
         """
-        # Clean up from context directory (where we put them)
         wheels_dir = image.context / "wheels"
         if wheels_dir.exists():
             shutil.rmtree(wheels_dir)
+        # Sweep any leftover staging dirs from this or prior runs so the
+        # tree is left pristine even if populate_wheels was interrupted.
+        for stale in image.context.glob("wheels.staging.*"):
+            if stale.is_dir():
+                shutil.rmtree(stale, ignore_errors=True)
 
     @auto_trace(logger)
     def _link_archive_to_cache(
