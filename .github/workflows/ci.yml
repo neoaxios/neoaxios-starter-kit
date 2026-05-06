@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Per-package install + import smoke test.
+# Smoke CI for the NeoAxios Starter Kit.
 #
-# Each package is editable-installed into a fresh interpreter and its top-level
-# module is imported. This catches dependency-resolution breakage and packaging
-# regressions on every push and PR without requiring tests/ directories to
-# exist (they don't yet — see README).
+# Inter-package dependencies are declared as `neoaxios-X>=0.2.1` against PyPI
+# but the kit is not (yet) published, so each package must be installed from
+# the working tree. We give pip every editable path in a single resolver run
+# so the inter-kit constraints resolve against sibling editables instead of
+# trying to fetch from the index.
 #
-# The `requires-python` floor is honored per package by matching against the
-# matrix Python version; packages whose floor is above the matrix version are
-# skipped for that job.
+# Each Python version then imports every kit module whose `requires-python`
+# floor is satisfied, catching packaging or import-time breakage. Tests do
+# not yet live in this repo (see README); when they do, this workflow grows
+# a `pytest` step.
 
 name: CI
 
@@ -35,88 +37,70 @@ permissions:
   contents: read
 
 jobs:
-  install-and-import:
-    name: ${{ matrix.package.name }} (Python ${{ matrix.python }})
+  smoke:
+    name: smoke (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12"]
-        package:
-          - name: neoaxios-build-system
-            path: neo-packages/neoaxios-build
-            import: neoaxios.build
-            min_python: "3.10"
-          - name: neoaxios-logging
-            path: neo-packages/logging
-            import: neoaxios_logging
-            min_python: "3.8"
-          - name: neoaxios-config
-            path: neo-packages/foundation/config
-            import: neoaxios_config
-            min_python: "3.8"
-          - name: neoaxios-secure-config
-            path: neo-packages/foundation/secure_config
-            import: neoaxios_secure_config
-            min_python: "3.10"
-          - name: neoaxios-secure-cache
-            path: neo-packages/foundation/secure_cache
-            import: neoaxios_secure_cache
-            min_python: "3.10"
-          - name: neoaxios-secret-store
-            path: neo-packages/foundation/secret_store
-            import: neoaxios_secret_store
-            min_python: "3.11"
-          - name: neoaxios-resilience-kit
-            path: neo-packages/foundation/resilience-kit
-            import: neoaxios_resilience_kit
-            min_python: "3.10"
-          - name: neoaxios-stripe-kit
-            path: neo-packages/foundation/stripe_kit
-            import: neoaxios_stripe_kit
-            min_python: "3.11"
-          - name: neoaxios-test-foundation
-            path: neo-packages/foundation/test-foundation
-            import: neoaxios_test_foundation
-            min_python: "3.12"
-          - name: neoaxios-fastapi-kit
-            path: neo-packages/foundation/fastapi_kit
-            import: neoaxios_fastapi_kit
-            min_python: "3.8"
-          - name: neoaxios-sse-kit
-            path: neo-packages/foundation/sse-kit
-            import: neoaxios_sse_kit
-            min_python: "3.11"
-
     steps:
-      - name: Skip if Python below package floor
-        id: floor-check
-        run: |
-          if [ "$(printf '%s\n' "${{ matrix.package.min_python }}" "${{ matrix.python }}" | sort -V | head -n1)" != "${{ matrix.package.min_python }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping: ${{ matrix.package.name }} requires >=${{ matrix.package.min_python }}, matrix is ${{ matrix.python }}"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/checkout@v4
-        if: steps.floor-check.outputs.skip != 'true'
 
       - uses: actions/setup-python@v5
-        if: steps.floor-check.outputs.skip != 'true'
         with:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Install package (editable)
-        if: steps.floor-check.outputs.skip != 'true'
+      - name: Install all kit packages (single-pass editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -e ${{ matrix.package.path }}
+          # Packages whose `requires-python` floor is above the matrix
+          # Python version are dropped from this list — installing them
+          # would fail metadata validation. neoaxios-test-foundation
+          # currently requires >=3.12.
+          PKGS="neo-packages/neoaxios-build \
+                neo-packages/logging \
+                neo-packages/foundation/config \
+                neo-packages/foundation/secure_config \
+                neo-packages/foundation/secure_cache \
+                neo-packages/foundation/secret_store \
+                neo-packages/foundation/resilience-kit \
+                neo-packages/foundation/stripe_kit \
+                neo-packages/foundation/sse-kit \
+                neo-packages/foundation/fastapi_kit"
+          if [ "${{ matrix.python }}" = "3.12" ]; then
+              PKGS="$PKGS neo-packages/foundation/test-foundation"
+          fi
+          # Pass every editable path to pip in one resolver run so
+          # inter-package `neoaxios-X>=0.2.1` constraints resolve against
+          # the sibling editables instead of falling back to PyPI.
+          pip install $(printf -- '-e %s ' $PKGS)
 
       - name: Import smoke test
-        if: steps.floor-check.outputs.skip != 'true'
-        run: python -c "import ${{ matrix.package.import }}"
+        run: |
+          MODS="neoaxios_logging neoaxios_config neoaxios_secure_config \
+                neoaxios_secure_cache neoaxios_secret_store \
+                neoaxios_resilience_kit neoaxios_stripe_kit \
+                neoaxios_sse_kit neoaxios_fastapi_kit neoaxios.build"
+          if [ "${{ matrix.python }}" = "3.12" ]; then
+              MODS="$MODS neoaxios_test_foundation"
+          fi
+          python - <<PY
+          import importlib, sys
+          mods = "$MODS".split()
+          ok = fail = 0
+          for m in mods:
+              try:
+                  importlib.import_module(m)
+                  print(f"  OK    {m}")
+                  ok += 1
+              except Exception as e:
+                  print(f"  FAIL  {m}: {type(e).__name__}: {e}")
+                  fail += 1
+          print(f"\n{ok}/{ok + fail} modules import cleanly")
+          sys.exit(1 if fail else 0)
+          PY
 
   license-check:
     name: license parity
