@@ -1,0 +1,3 @@
+;; Placeholder — overwritten at container startup by entrypoint.sh
+;; using POSTGRES_USER and POSTGRES_PASSWORD environment variables.
+;; Do not put real credentials in this file.

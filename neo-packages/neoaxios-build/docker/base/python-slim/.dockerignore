@@ -1,0 +1,6 @@
+# Minimal .dockerignore for base image
+# Context is small, but .dockerignore is required by build system
+
+# Build artifacts
+*.md
+docker.yaml

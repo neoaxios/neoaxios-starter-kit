@@ -1,0 +1,404 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Okta OIDC Configuration Examples
+#
+# Okta is an identity and access management platform that provides OIDC/OAuth 2.0
+# authentication services. This file shows configuration examples for:
+#
+# - Org authorization server (default)
+# - Custom authorization servers
+# - Multi-application setup
+# - Custom claims mapping
+# - Group-based access control
+#
+# Okta Setup:
+# 1. Sign up at okta.com or use existing tenant
+# 2. Create an application (Applications > Create App Integration)
+# 3. Choose OIDC - OpenID Connect
+# 4. Choose application type (Web, SPA, Native)
+# 5. Configure redirect URIs
+# 6. Note Client ID and Client Secret
+# 7. Configure authorization server (Security > API > Authorization Servers)
+
+---
+# =============================================================================
+# Example 1: Okta Org Authorization Server (Default)
+# =============================================================================
+#
+# The org authorization server is Okta's default authorization server.
+# It's available at: https://{tenant}.okta.com/oauth2/default
+#
+# Best for:
+# - Simple applications
+# - Single-tenant applications
+# - Applications not requiring custom claims
+
+okta_org_server:
+  # Okta tenant domain
+  # Format: dev-{numbers}.okta.com (dev tenant)
+  #         {company}.okta.com (production tenant)
+  # Do NOT include https:// prefix
+  tenant_id: "dev-12345.okta.com"
+
+  # OAuth 2.0 client ID from Okta application
+  # Found in: Applications > {Your App} > General
+  # Format: 20-character alphanumeric string
+  client_id: "0oa2t1n3k4p5q6r7s8t9"
+
+  # OAuth 2.0 client secret (for confidential clients)
+  # Found in: Applications > {Your App} > General > Client Secrets
+  # IMPORTANT: Keep secret secure, never commit to source control
+  client_secret: "env:OKTA_CLIENT_SECRET"
+
+  # Authorization server ID
+  # "default" for org authorization server
+  # Custom ID for custom authorization servers
+  authorization_server_id: "default"
+
+  # Expected audience claim (optional)
+  # For org server, typically: "api://default"
+  # Can also be client_id
+  audience: "api://default"
+
+  # Clock skew tolerance (Okta recommendation: 30 seconds)
+  clock_skew_seconds: 30
+
+  # Issuer and JWKS URI are auto-constructed from tenant_id and authorization_server_id
+  # Issuer: https://{tenant_id}/oauth2/{authorization_server_id}
+  # JWKS URI: https://{tenant_id}/oauth2/{authorization_server_id}/v1/keys
+
+  # Cache configuration
+  cache:
+    backend: "memory"
+    ttl_seconds: 86400  # 24 hours
+
+---
+# =============================================================================
+# Example 2: Okta Custom Authorization Server
+# =============================================================================
+#
+# Custom authorization servers allow fine-grained control over tokens and claims.
+#
+# Setup:
+# 1. Create custom authorization server: Security > API > Authorization Servers > Add
+# 2. Configure name, audience, and description
+# 3. Add custom claims under Claims tab
+# 4. Configure access policies and rules
+# 5. Note the authorization server ID
+#
+# Best for:
+# - Multi-application deployments
+# - Applications requiring custom claims
+# - Fine-grained access control
+
+okta_custom_server:
+  # Okta tenant domain
+  tenant_id: "mycompany.okta.com"
+
+  # Client ID from Okta application
+  client_id: "0oa9x8y7z6a5b4c3d2e1"
+
+  # Client secret
+  client_secret: "file:///run/secrets/okta-client-secret"
+
+  # Custom authorization server ID
+  # Found in: Security > API > Authorization Servers > {Your Server} > Settings
+  # Example: "aus8v9w0x1y2z3a4b5c6"
+  authorization_server_id: "custom_api_server"
+
+  # Audience for custom server
+  # Defined when creating custom authorization server
+  # Example: "https://api.mycompany.com"
+  audience: "https://api.mycompany.com"
+
+  # Clock skew
+  clock_skew_seconds: 30
+
+  # Cache with Redis for production
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "okta_custom"
+
+---
+# =============================================================================
+# Example 3: Multi-Application Okta Configuration
+# =============================================================================
+#
+# Configuration for multiple Okta applications using the same tenant.
+# Useful for microservices architecture where each service has its own app.
+
+okta_multi_app:
+  # Web application configuration
+  web_app:
+    tenant_id: "mycompany.okta.com"
+    client_id: "0oa1a2b3c4d5e6f7g8h9"  # Web app client ID
+    client_secret: "env:OKTA_WEB_CLIENT_SECRET"
+    authorization_server_id: "default"
+    audience: "api://default"
+
+  # API service configuration
+  api_service:
+    tenant_id: "mycompany.okta.com"
+    client_id: "0oa9h8g7f6e5d4c3b2a1"  # API service client ID
+    client_secret: "env:OKTA_API_CLIENT_SECRET"
+    authorization_server_id: "api_server"
+    audience: "https://api.mycompany.com"
+
+  # Mobile app configuration (public client)
+  mobile_app:
+    tenant_id: "mycompany.okta.com"
+    client_id: "0oaz1y2x3w4v5u6t7s8r"  # Mobile app client ID
+    client_secret: null  # Public client, no secret
+    authorization_server_id: "default"
+    audience: "api://default"
+
+  # Shared cache configuration
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "okta_multi"
+
+---
+# =============================================================================
+# Example 4: Okta with Custom Claims
+# =============================================================================
+#
+# Configure Okta to include custom claims in tokens.
+#
+# Custom claims setup:
+# 1. Go to Security > API > Authorization Servers > {Your Server}
+# 2. Click Claims tab > Add Claim
+# 3. Configure claim name, value type, and scope
+# 4. Use expression language to map user attributes
+#
+# Common custom claims:
+# - department: user.profile.department
+# - manager: user.profile.manager
+# - cost_center: user.profile.costCenter
+# - roles: Custom role mapping from groups
+
+okta_custom_claims:
+  tenant_id: "mycompany.okta.com"
+  client_id: "0oa1b2c3d4e5f6g7h8i9"
+  client_secret: "env:OKTA_CLIENT_SECRET"
+  authorization_server_id: "custom_claims_server"
+  audience: "https://api.mycompany.com"
+
+  # Custom claims configuration (for reference, configured in Okta UI)
+  custom_claims:
+    # Department claim
+    # Expression: user.profile.department
+    # Scope: profile
+    department:
+      claim_name: "department"
+      value_type: "Expression"
+      value: "user.profile.department"
+      include_in: ["ID token", "Access token"]
+
+    # Manager claim
+    # Expression: user.profile.manager
+    manager:
+      claim_name: "manager"
+      value: "user.profile.manager"
+      include_in: ["ID token"]
+
+    # Roles from groups
+    # Expression: Groups.startsWith("APP", "ROLE_", 20)
+    # Maps Okta groups starting with "ROLE_" to roles claim
+    roles:
+      claim_name: "roles"
+      value_type: "Groups"
+      filter: "regex:^ROLE_.*"
+      include_in: ["ID token", "Access token"]
+
+---
+# =============================================================================
+# Example 5: Okta Group-Based Access Control
+# =============================================================================
+#
+# Use Okta groups for role-based access control.
+#
+# Groups setup:
+# 1. Create groups: Directory > Groups > Add Group
+# 2. Assign users to groups
+# 3. Configure group claim in authorization server
+# 4. Map groups to roles in your application
+
+okta_groups:
+  tenant_id: "mycompany.okta.com"
+  client_id: "0oa5d6e7f8g9h0i1j2k3"
+  client_secret: "env:OKTA_CLIENT_SECRET"
+  authorization_server_id: "default"
+  audience: "api://default"
+
+  # Group claim configuration (configured in Okta)
+  # Security > API > Authorization Servers > {Server} > Claims > Add Claim
+  group_claim:
+    # Claim name in token
+    claim_name: "groups"
+
+    # Value type: Groups
+    value_type: "Groups"
+
+    # Filter: Include groups matching regex
+    # Examples:
+    #   - ".*" (all groups)
+    #   - "^APP_.*" (groups starting with APP_)
+    #   - "^(Admin|User|Viewer)$" (specific groups)
+    filter_regex: "^(Admin|Editor|Viewer|Developer)$"
+
+    # Include in access token and ID token
+    include_in_token_type: ["access", "id"]
+
+  # Example groups in Okta
+  groups:
+    - name: "Admin"
+      description: "Full administrative access"
+      members: ["admin@mycompany.com"]
+
+    - name: "Editor"
+      description: "Can create and edit resources"
+      members: ["editor@mycompany.com"]
+
+    - name: "Viewer"
+      description: "Read-only access"
+      members: ["viewer@mycompany.com"]
+
+    - name: "Developer"
+      description: "Development team access"
+      members: ["dev@mycompany.com"]
+
+---
+# =============================================================================
+# Environment Variable Reference for Okta
+# =============================================================================
+#
+# Standard environment variables for Okta configuration
+
+environment_variables:
+  # Required variables
+  OKTA_TENANT_ID:
+    description: "Okta tenant domain (e.g., dev-12345.okta.com)"
+    example: "dev-12345.okta.com"
+    required: true
+
+  OKTA_CLIENT_ID:
+    description: "OAuth 2.0 client ID from Okta application"
+    example: "0oa2t1n3k4p5q6r7s8t9"
+    required: true
+
+  # Optional variables
+  OKTA_CLIENT_SECRET:
+    description: "OAuth 2.0 client secret (confidential clients only)"
+    example: "abcdef123456..."
+    required: false
+    security: "Store securely, never commit to source control"
+
+  OKTA_AUTHORIZATION_SERVER_ID:
+    description: "Authorization server ID"
+    default: "default"
+    example: "custom_api_server"
+    required: false
+
+  OKTA_AUDIENCE:
+    description: "Expected audience claim"
+    default: "api://default"
+    example: "https://api.mycompany.com"
+    required: false
+
+  # Cache configuration
+  REDIS_URL:
+    description: "Redis connection URL for caching"
+    example: "redis://localhost:6379"
+    required: false
+
+---
+# =============================================================================
+# Okta Token Claims Reference
+# =============================================================================
+#
+# Standard and custom claims in Okta tokens
+
+token_claims:
+  # Standard OIDC claims (always present)
+  standard:
+    sub:
+      description: "Subject (Okta user ID or email)"
+      example: "00u1abc2def3ghi4jkl5"
+      type: "string"
+
+    iss:
+      description: "Issuer (Okta authorization server URL)"
+      example: "https://dev-12345.okta.com/oauth2/default"
+      type: "string"
+
+    aud:
+      description: "Audience (client ID or API identifier)"
+      example: "0oa2t1n3k4p5q6r7s8t9"
+      type: "string or array"
+
+    exp:
+      description: "Expiration timestamp"
+      example: 1609459200
+      type: "integer (Unix timestamp)"
+
+    iat:
+      description: "Issued at timestamp"
+      example: 1609455600
+      type: "integer (Unix timestamp)"
+
+  # Okta-specific claims
+  okta_specific:
+    ver:
+      description: "Token version (1 = org server, 2 = custom server)"
+      example: 1
+      type: "integer"
+
+    jti:
+      description: "JWT ID (unique token identifier)"
+      example: "AT.abc123def456"
+      type: "string"
+
+    uid:
+      description: "Okta universal user ID"
+      example: "00u1abc2def3ghi4jkl5"
+      type: "string"
+
+    groups:
+      description: "User's group memberships"
+      example: ["Everyone", "Admins", "Developers"]
+      type: "array"
+
+    scp:
+      description: "OAuth scopes (access tokens)"
+      example: ["openid", "profile", "email", "api:read"]
+      type: "array"
+
+  # Custom claims (configured in Okta)
+  custom:
+    department:
+      description: "User's department"
+      example: "Engineering"
+      type: "string"
+
+    roles:
+      description: "Application roles from groups"
+      example: ["admin", "user"]
+      type: "array"

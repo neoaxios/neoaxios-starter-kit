@@ -1,0 +1,56 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# JWT Configuration Example
+#
+# This example shows how to configure the authentication framework
+# to use generic JWT token validation with RSA or HMAC signatures.
+#
+# Usage:
+#   from neoaxios_fastapi_kit.auth.config import load_config_from_yaml
+#   config = load_config_from_yaml("jwt.yaml")
+
+# JWT Provider Configuration
+jwt:
+  # Path to RSA public key file (PEM format) or HMAC secret
+  # Supports file references or environment variables:
+  # - File path: "/etc/keys/public.pem"
+  # - File reference: "file:///run/secrets/jwt-public-key"
+  # - Environment: "env:JWT_PUBLIC_KEY_PATH"
+  public_key_path: "/etc/keys/public.pem"
+
+  # JWT signing algorithm
+  # Supported: RS256, RS384, RS512, HS256, HS384, HS512, ES256, ES384, ES512
+  algorithm: "RS256"
+
+  # Expected token issuer (iss claim)
+  issuer: "https://auth.example.com"
+
+  # Expected token audience (aud claim) - optional
+  audience: "my-application"
+
+  # Maximum allowed clock skew for exp/nbf validation (seconds)
+  clock_skew_seconds: 30
+
+# Cache Configuration (optional)
+cache:
+  # Cache backend: "memory" or "redis"
+  backend: "memory"
+
+  # Cache TTL in seconds
+  ttl_seconds: 300
+
+# Resolver Configuration (optional)
+resolver_type: "local"
+resolver_merge_strategy: "union"

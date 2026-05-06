@@ -1,0 +1,58 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Azure AD Configuration Example
+#
+# This example shows how to configure the authentication framework
+# to use Azure Active Directory as the identity provider.
+#
+# Usage:
+#   from neoaxios_fastapi_kit.auth.config import load_config_from_yaml
+#   config = load_config_from_yaml("azure-ad.yaml")
+
+# Azure AD Provider Configuration
+azure:
+  # Azure AD Tenant ID (GUID or domain name)
+  tenant_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  # Azure AD Application (Client) ID
+  client_id: "660e8400-e29b-41d4-a716-446655440000"
+
+  # Azure AD Client Secret
+  # Supports direct values, file references, or environment variables:
+  # - Direct: "my-secret"
+  # - File: "file:///run/secrets/azure-secret"
+  # - Environment: "env:AZURE_CLIENT_SECRET"
+  client_secret: "file:///run/secrets/azure-secret"
+
+  # Microsoft Graph API endpoint (optional)
+  graph_endpoint: "https://graph.microsoft.com/v1.0"
+
+  # Whether to verify audience claim matches client_id (optional)
+  verify_audience: true
+
+# Cache Configuration (optional)
+cache:
+  # Cache backend: "memory" or "redis"
+  backend: "memory"
+
+  # Cache TTL in seconds
+  ttl_seconds: 300
+
+  # Redis URL (required if backend is "redis")
+  # redis_url: "redis://localhost:6379/0"
+
+# Resolver Configuration (optional)
+resolver_type: "local"
+resolver_merge_strategy: "union"

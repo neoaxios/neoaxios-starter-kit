@@ -1,0 +1,92 @@
+# Development Telemetry Configuration
+# Optimized for local development with verbose logging
+# DEBUG level, console output, no rotation
+
+version: "1.0"
+
+logbook:
+  # Base configuration
+  level: DEBUG                    # Verbose logging for development
+  enabled: true
+  console_enabled: true           # Show logs in console during development
+  log_dir: .telemetry             # Local directory
+  log_file: dev.log               # Development log file
+  format: json                    # JSON for easier parsing
+
+  # Component-specific levels
+  component_levels:
+    "*": DEBUG                    # DEBUG for everything in development
+    # Example: Even more verbose for specific area
+    # "myapp.database": TRACE
+
+  # File output configuration
+  outputs:
+    - name: dev_file
+      type: file
+      path: .telemetry/dev.log
+      level: DEBUG
+      components: "*"
+
+      # Buffering: Default buffer for development
+      buffer_mode: default_buffer
+
+      # Rotation: Disabled (or small for local development)
+      rotation:
+        type: size
+        max_bytes: 10485760         # 10 MB (small for dev)
+        backup_count: 3             # Keep only 3 files
+        compress: null              # No compression in dev
+
+      # Flush policy: Moderate for development
+      flush_policy:
+        on_error: true              # Flush on ERROR
+        on_warning: true            # Flush on WARNING (helpful in dev)
+        on_interval: 10             # Flush every 10 seconds
+        on_buffer_full: true
+        on_exit: true
+
+    # Console output for immediate feedback
+    - name: dev_console
+      type: stream
+      stream: stderr
+      level: INFO                   # Console shows INFO and above
+      components: "*"
+
+  # Field mapping: None for development (raw fields)
+  field_mapping:
+    preset: none
+
+  # Exception rendering: Include everything for debugging
+  exceptions:
+    format: dict
+    include_locals: true            # Include local variables (helpful for debugging)
+    include_chain: true
+    max_frames: 100                 # Full tracebacks
+
+  # Source location tracking
+  callsite:
+    enabled: true
+    parameters:
+      - filename
+      - func_name
+      - lineno
+      - module
+    additional_ignores:
+      - telemetry.logbook
+
+  # Unicode handling
+  unicode:
+    encoding: utf-8
+    errors: replace
+    fallback_encoding: latin-1
+
+  # Presets
+  presets:
+    development:
+      "*": DEBUG
+    production:
+      "*": ERROR
+
+# Quick preset switch via environment:
+# NEO_TELEMETRY_LEVEL=DEBUG
+# NEO_TELEMETRY_CONSOLE=true

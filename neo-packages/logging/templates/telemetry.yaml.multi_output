@@ -1,0 +1,181 @@
+# Multi-Output Telemetry Configuration
+# Demonstrates routing logs to multiple destinations with different filters
+# Use case: Separate files for errors, audit logs, performance metrics
+
+version: "1.0"
+
+logbook:
+  # Base configuration
+  level: INFO                     # Base level
+  enabled: true
+  console_enabled: false
+  log_dir: /var/log/app
+  log_file: application.log       # Main catch-all log
+  format: json
+
+  # Component-specific levels
+  component_levels:
+    "*": INFO                     # Default: INFO
+    "myapp.audit": DEBUG          # Verbose audit logging
+    "myapp.performance": TRACE    # Trace performance metrics
+    "myapp.security": DEBUG       # Verbose security logging
+
+  # Multiple output destinations with different purposes
+  outputs:
+    # Output 1: All ERROR+ logs to errors.log
+    - name: error_log
+      type: file
+      path: /var/log/app/errors.log
+      level: ERROR                  # Only errors and above
+      components: "*"               # From all components
+      buffer_mode: write_through    # Immediate writes for errors
+      rotation:
+        type: size
+        max_bytes: 52428800         # 50 MB
+        backup_count: 10
+        compress: gzip
+      flush_policy:
+        on_error: true              # Flush immediately
+        on_interval: 0              # No periodic flush (write-through)
+        on_exit: true
+
+    # Output 2: Audit logs (compliance/tracking)
+    - name: audit_log
+      type: file
+      path: /var/log/app/audit.log
+      level: DEBUG
+      components: "myapp.audit"     # Only audit component
+      buffer_mode: write_through    # Never buffer audit logs
+      rotation:
+        type: time                  # Time-based rotation
+        when: midnight              # Rotate daily
+        backup_count: 90            # Keep 90 days
+        compress: gzip
+      flush_policy:
+        on_error: true
+        on_warning: true
+        on_interval: 0              # Immediate writes
+        on_exit: true
+
+    # Output 3: Performance metrics
+    - name: performance_log
+      type: file
+      path: /var/log/app/performance.log
+      level: TRACE                  # All performance data
+      components: "myapp.performance.*"  # All performance components
+      buffer_mode: large_buffer     # Batch performance metrics
+      rotation:
+        type: hybrid
+        max_bytes: 104857600        # 100 MB
+        when: midnight              # Daily rotation
+        backup_count: 7
+        compress: bz2               # Better compression for metrics
+      flush_policy:
+        on_error: true
+        on_interval: 60             # Flush every minute
+        on_exit: true
+
+    # Output 4: Security events
+    - name: security_log
+      type: file
+      path: /var/log/app/security.log
+      level: DEBUG
+      components: "myapp.security.*"
+      buffer_mode: write_through    # Never buffer security events
+      rotation:
+        type: time
+        when: midnight
+        backup_count: 365           # Keep 1 year for security
+        compress: gzip
+      flush_policy:
+        on_error: true
+        on_warning: true
+        on_interval: 0
+        on_exit: true
+
+    # Output 5: Application logs (non-error, non-special)
+    - name: app_log
+      type: file
+      path: /var/log/app/application.log
+      level: INFO
+      components: "*"               # All components
+      buffer_mode: default_buffer   # Normal buffering
+      rotation:
+        type: size
+        max_bytes: 104857600        # 100 MB
+        backup_count: 5
+        compress: gzip
+      flush_policy:
+        on_error: true
+        on_warning: false
+        on_interval: 10
+        on_exit: true
+
+    # Output 6: Console/stderr for monitoring (optional)
+    # - name: console_errors
+    #   type: stream
+    #   stream: stderr
+    #   level: ERROR                # Only show errors on console
+    #   components: "*"
+
+  # Field mapping: Choose based on your log aggregator
+  field_mapping:
+    preset: datadog               # Datadog, grafana, elk, or none
+    # custom_mappings:            # Or define custom mappings
+    #   timestamp: "@timestamp"
+    #   level: "severity"
+    #   message: "msg"
+
+  # Exception rendering
+  exceptions:
+    format: dict
+    include_locals: false
+    include_chain: true
+    max_frames: 50
+
+  # Source location tracking
+  callsite:
+    enabled: true
+    parameters:
+      - filename
+      - func_name
+      - lineno
+    additional_ignores:
+      - telemetry.logbook
+
+  # Unicode handling
+  unicode:
+    encoding: utf-8
+    errors: replace
+    fallback_encoding: latin-1
+
+  # Presets
+  presets:
+    development:
+      "*": DEBUG
+    production:
+      "*": INFO
+      "myapp.audit": DEBUG
+      "myapp.performance": TRACE
+      "myapp.security": DEBUG
+
+# Notes:
+# - Logs can go to multiple outputs (e.g., errors go to both error_log and app_log)
+# - Outputs are filtered independently (level + component pattern)
+# - Use different buffer modes based on criticality
+# - Rotate frequently-written logs to prevent disk full
+# - Compress old logs to save space
+# - Keep security/audit logs longer for compliance
+
+# Example component structure for this config:
+# myapp/
+# ├── audit/
+# │   ├── user_actions.py     -> logs to audit_log
+# │   └── data_access.py      -> logs to audit_log
+# ├── performance/
+# │   ├── metrics.py          -> logs to performance_log
+# │   └── profiling.py        -> logs to performance_log
+# ├── security/
+# │   ├── auth.py             -> logs to security_log
+# │   └── authorization.py    -> logs to security_log
+# └── app.py                  -> logs to app_log

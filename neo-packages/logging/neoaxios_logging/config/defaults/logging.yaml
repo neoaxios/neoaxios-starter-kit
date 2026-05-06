@@ -1,0 +1,134 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Logging Package Behavior Configuration
+#
+# This file defines HOW logging works (telemetry, flight recorder settings).
+# Infrastructure (where logs go) is also configured here since logging is behavior.
+#
+# Priority (lowest to highest):
+#   1. Package defaults:      logging/defaults/*.yaml (if exists)
+#   2. Project config:        config/packages/logging.yaml (THIS FILE)
+#   3. Environment overrides: config/environments/{NEO_ENV}.yaml
+#   4. Environment variables: NEO_* (highest)
+#
+# See config/OVERRIDES.md for complete override reference
+
+# ═══════════════════════════════════════════════════════════════
+#  Logbook Configuration
+# ═══════════════════════════════════════════════════════════════
+
+telemetry:
+  # Enable/disable the telemetry system
+  enabled: true
+
+  # Logging level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
+
+  # Output logs to console
+  console_enabled: true
+
+  # Legacy fields for compatibility
+  log_dir: .logs
+  log_file: telemetry.log
+  format: json
+
+
+# ═══════════════════════════════════════════════════════════════
+#  FlightRecorder Configuration
+# ═══════════════════════════════════════════════════════════════
+
+flight_recorder:
+  # Enable flight recorder (checkpoint-based event logging)
+  enabled: true
+
+  # Where to save flight recorder sessions
+  # NOTE: This config value is currently NOT used by FlightRecorder (hardcoded in flight_recorder.py:428)
+  # Default: .qrs/flight_recorder/sessions/{date}/
+  # CI orchestrators may override with explicit output_dir, e.g.:
+  #   Controller: /tmp/test-reports/{session_id}/host/flight_recorder/
+  #   Workers: /tmp/test-reports/{session_id}/workers/flight_recorder/
+  directory: .qrs/flight_recorder/sessions
+
+  # Enable buffering for performance
+  buffering: true
+
+  # Number of events to buffer before writing
+  buffer_size: 100
+
+  # Automatically flush buffer on ERROR/CRITICAL events
+  auto_flush_on_critical: true
+
+  # Clean up old recordings
+  cleanup_old_recordings: true
+
+  # How long to keep recordings (days)
+  recording_retention_days: 30
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Performance Tracking Configuration
+# ═══════════════════════════════════════════════════════════════
+
+performance:
+  # Enable performance tracking
+  enabled: true
+
+  # Number of historical runs to keep per test
+  max_history_size: 100
+
+  # Path to performance history file
+  history_file: .telemetry/performance_history.json
+
+  # Track individual test durations
+  track_individual_tests: true
+
+  # Use batch recording for better performance
+  batch_recording: true
+
+  # Clean up old JSON report files
+  cleanup_old_reports: true
+
+  # How long to keep JSON reports (days)
+  report_retention_days: 30
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Diagnostics Configuration
+# ═══════════════════════════════════════════════════════════════
+
+diagnostics:
+  # Enable diagnostics/health checks
+  enabled: true
+
+  # Automatically run diagnostics on startup
+  auto_run: false
+
+  # Check Python environment
+  check_python: true
+
+  # Check JavaScript/Node.js environment
+  check_javascript: true
+
+  # Check cache integrity
+  check_cache: true
+
+  # Check configuration files
+  check_config: true
+
+  # Check runtime dependencies
+  check_runtime: true
+
+  # Fail if diagnostics find errors
+  fail_on_error: false

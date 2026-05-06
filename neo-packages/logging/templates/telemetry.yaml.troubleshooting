@@ -1,0 +1,126 @@
+# Troubleshooting Telemetry Configuration
+# For debugging production issues with selective verbose logging
+# ERROR default with targeted TRACE for specific components
+
+version: "1.0"
+
+logbook:
+  # Base configuration: Production-safe defaults
+  level: ERROR                    # Safe default
+  enabled: true
+  console_enabled: false          # No console in production
+  log_dir: /var/log/app/troubleshooting
+  log_file: troubleshooting.log
+  format: json
+
+  # Component-specific levels: Targeted debugging
+  component_levels:
+    "*": ERROR                              # Default: ERROR for everything
+
+    # Example: Enable TRACE for specific problem areas
+    # Uncomment and customize for your troubleshooting needs:
+    # "myapp.executor": TRACE               # Full tracing for executor
+    # "myapp.database.*": DEBUG             # Debug all database components
+    # "myapp.api.payments": TRACE           # Trace payment API calls
+    # "myapp.worker.*": INFO                # Info for all workers
+
+  # Multiple outputs for different purposes
+  outputs:
+    # Output 1: Everything at ERROR+ to main log
+    - name: main_errors
+      type: file
+      path: /var/log/app/troubleshooting/errors.log
+      level: ERROR
+      components: "*"
+      buffer_mode: write_through    # Immediate writes
+      rotation:
+        type: size
+        max_bytes: 52428800         # 50 MB
+        backup_count: 5
+        compress: gzip
+      flush_policy:
+        on_error: true
+        on_interval: 5
+        on_exit: true
+
+    # Output 2: TRACE logs for problem component
+    - name: trace_log
+      type: file
+      path: /var/log/app/troubleshooting/trace.log
+      level: TRACE
+      components: "*"                # Will be filtered by component_levels
+      buffer_mode: small_buffer       # Small buffer for TRACE
+      rotation:
+        type: hybrid                  # Rotate by size AND time
+        max_bytes: 104857600          # 100 MB
+        backup_count: 3
+        when: midnight                # Also rotate daily
+        compress: gzip
+      flush_policy:
+        on_error: true
+        on_warning: true
+        on_interval: 3                # Flush frequently for TRACE
+        on_exit: true
+
+    # Output 3: Separate file for specific component
+    # - name: problem_component
+    #   type: file
+    #   path: /var/log/app/troubleshooting/executor.log
+    #   level: TRACE
+    #   components: "myapp.executor"  # Only logs from executor
+    #   buffer_mode: write_through
+    #   rotation:
+    #     type: size
+    #     max_bytes: 52428800
+    #     backup_count: 3
+    #   flush_policy:
+    #     on_error: true
+    #     on_interval: 1              # Flush every second
+
+  # Field mapping for analysis tools
+  field_mapping:
+    preset: elk                       # ELK Stack compatible
+
+  # Exception rendering: Full detail for troubleshooting
+  exceptions:
+    format: dict
+    include_locals: false             # Still avoid locals in production
+    include_chain: true
+    max_frames: 100                   # Full tracebacks
+
+  # Source location tracking
+  callsite:
+    enabled: true
+    parameters:
+      - filename
+      - func_name
+      - lineno
+      - module
+    additional_ignores:
+      - telemetry.logbook
+
+  # Unicode handling
+  unicode:
+    encoding: utf-8
+    errors: replace
+    fallback_encoding: latin-1
+
+  # Presets for quick switching
+  presets:
+    troubleshooting:
+      "*": ERROR
+      # Add problem components here
+    development:
+      "*": DEBUG
+    production:
+      "*": ERROR
+
+# Runtime control via environment variables:
+# NEO_TELEMETRY_LEVEL=ERROR
+# NEO_TELEMETRY_LEVEL__myapp_executor=TRACE    # Note: dots become underscores
+# NEO_TELEMETRY_LEVEL__myapp_database=DEBUG
+
+# Or use runtime API:
+# from telemetry.logbook.manager import get_runtime_manager
+# manager = get_runtime_manager()
+# manager.set_level("myapp.executor", LogLevel.TRACE)

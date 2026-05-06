@@ -1,0 +1,58 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Redis Container Definition (3rdparty)
+#
+# Canonical image definition for Redis. Uses the baked neoaxios/redis image
+# which carries the Tier-1 cache config plus the Tier-2 cluster overlay at
+# /etc/redis/redis.conf and /etc/redis/cluster.conf. Runtime topology is
+# selected via REDIS_MODE — cluster mode is the default (post-migration);
+# single-node test deployments auto-bootstrap all 16384 slots via
+# CLUSTER_AUTO_BOOTSTRAP=1.
+#
+# Used by: integration tests
+#
+# 3rdparty service with stdout/stderr redirect to log volume (handled by
+# the baked entrypoint, not by this YAML). Pure cache workload — all keys
+# use TTL, no durable state.
+#
+# Usage (_include directive):
+#   docker_images:
+#     _include:
+#       - redis.yaml
+#     _deploy_to: all
+
+name: redis
+image: neoaxios/redis:latest
+
+ports:
+  - "6379:6379"
+
+environment:
+  REDIS_MODE: cluster
+  REDIS_PORT: "6379"
+  CLUSTER_AUTO_BOOTSTRAP: "1"
+
+volumes:
+  # Container log collection (stdout/stderr redirect)
+  - "/var/log/neo:/var/log/neo"
+
+# Image carries the baked HEALTHCHECK and ENTRYPOINT. YAML-level health_check
+# is kept for downstream-orchestrator compatibility (the coordinator polls it)
+# and delegates to the same redis-cli ping that the image's HEALTHCHECK runs.
+health_check:
+  command: ["redis-cli", "ping"]
+  initial_timeout: 15
+  max_attempts: 5
+  backoff_multiplier: 2

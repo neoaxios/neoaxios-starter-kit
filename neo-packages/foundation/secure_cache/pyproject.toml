@@ -1,0 +1,99 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neoaxios-secure-cache"
+version = "0.2.1"
+description = "Secure caching infrastructure with defense-in-depth security layers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "NeoAxios Engineering", email = "engineering@neoaxios.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "neoaxios-logging>=0.2.1",
+    "neoaxios-secure-config>=0.2.1",
+    "redis>=7.0.0",
+    "cryptography>=46.0.7",
+    "prometheus-client>=0.20.0",
+    "msgpack>=1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "msgpack>=1.0",
+    "neoaxios-test-foundation>=0.2.1",  # shared test infra: redis fixtures, stats, namespacing
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "msgpack>=1.0",
+    "neoaxios-test-foundation>=0.2.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "-p", "no:cacheprovider",
+]
+markers = [
+    "integration: marks tests as integration tests (require real backends)",
+    "e2e: marks tests as end-to-end tests (require full container infrastructure)",
+    "extended: marks tests that require extended infrastructure (externally provisioned)",
+    "scale: marks tests as scale/performance tests (require real Redis, high concurrency)",
+]
+
+[tool.coverage.run]
+source = ["src/secure_cache"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

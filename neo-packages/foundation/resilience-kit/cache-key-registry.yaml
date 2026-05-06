@@ -1,0 +1,105 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Cache Key Registry — package-scoped
+#
+# Source of truth for Redis key families owned by this package. The
+# secure_cache loader discovers all `**/cache-key-registry.yaml` files
+# from the repo root and merges them into a single in-memory
+# CacheKeyRegistry; key names must be globally unique across all
+# per-package files.
+#
+# Schema:
+#   version: "1"
+#   package: <name>
+#   keys:
+#     <key-name>:
+#       pattern: ...
+#       scope: user|tenant|app|global
+#       component: ...
+#       feature: ...
+#       description: ...
+#       ttl_seconds: <int>
+#       value_type: ...
+
+version: '1'
+package: resilience-kit
+keys:
+  circuit:failures:
+    pattern: '{domain_scope}:{service:operation}:failures'
+    scope: domain
+    component: neoaxios_resilience_kit.circuit_breaker
+    feature: failures
+    description: |-
+      Circuit breaker failure counter. Hash-tagged on {service:operation} for Redis Cluster slot co-location with all circuit breaker keys. Per-workflow isolation is achieved by constructing a distinct CacheNamespace with service_name=workflow_type; the effective slot group becomes {workflow_type}:{service}:{operation}, giving each workflow type an independent failure counter.
+    value_type: INT (counter)
+    hash_tag_group: '{service:operation}'
+    hash_tag_purpose: Co-locates all 4 circuit breaker keys per service-operation pair for single-node pipeline atomicity
+  circuit:half_open_lock:
+    pattern: '{domain_scope}:{service:operation}:half_open_lock'
+    scope: domain
+    component: neoaxios_resilience_kit.circuit_breaker
+    feature: half_open_lock
+    description: |-
+      Circuit breaker half-open test lock (NX with TTL). Hash-tagged on {service:operation} for Redis Cluster slot co-location with all circuit breaker keys. Per-workflow isolation is achieved by constructing a distinct CacheNamespace with service_name=workflow_type; the effective slot group becomes {workflow_type}:{service}:{operation}, giving each workflow type an independent half-open recovery slot.
+    value_type: STRING (lock)
+    hash_tag_group: '{service:operation}'
+    hash_tag_purpose: Co-locates all 4 circuit breaker keys per service-operation pair for single-node pipeline atomicity
+  circuit:last_failure:
+    pattern: '{domain_scope}:{service:operation}:last_failure'
+    scope: domain
+    component: neoaxios_resilience_kit.circuit_breaker
+    feature: last_failure
+    description: |-
+      Circuit breaker last failure ISO timestamp. Hash-tagged on {service:operation} for Redis Cluster slot co-location with all circuit breaker keys. Per-workflow isolation is achieved by constructing a distinct CacheNamespace with service_name=workflow_type; the effective slot group becomes {workflow_type}:{service}:{operation}, giving each workflow type an independent last-failure timestamp.
+    value_type: STRING (ISO datetime)
+    hash_tag_group: '{service:operation}'
+    hash_tag_purpose: Co-locates all 4 circuit breaker keys per service-operation pair for single-node pipeline atomicity
+  circuit:state:
+    pattern: '{domain_scope}:{service:operation}:state'
+    scope: domain
+    component: neoaxios_resilience_kit.circuit_breaker
+    feature: state
+    description: |-
+      Circuit breaker state (CLOSED|OPEN|HALF_OPEN). Hash-tagged on {service:operation} for Redis Cluster slot co-location with all circuit breaker keys. Per-workflow isolation is achieved by constructing a distinct CacheNamespace with service_name=workflow_type; the effective slot group becomes {workflow_type}:{service}:{operation}, giving each workflow type independent breaker state.
+    value_type: STRING (enum)
+    hash_tag_group: '{service:operation}'
+    hash_tag_purpose: Co-locates all 4 circuit breaker keys per service-operation pair for single-node pipeline atomicity
+  ratelimit:fixed_window:
+    pattern: '{domain_scope}:fw:{window_key}'
+    scope: domain
+    component: neoaxios_resilience_kit.ratelimit
+    feature: fixed_window
+    description: |-
+      Fixed window rate limiting counter (STRING DECRBY). Prefix 'fw:' is the algorithm discriminator. TTL = window_seconds.
+    ttl_seconds: dynamic (window_seconds)
+    value_type: STRING (integer counter, initialized to limit, decremented by cost)
+  ratelimit:sliding_window:
+    pattern: '{domain_scope}:sw:{window_key}'
+    scope: domain
+    component: neoaxios_resilience_kit.ratelimit
+    feature: sliding_window
+    description: |-
+      Rate limiting sliding window counters (Redis ZSET). Prefix 'sw:' is the algorithm discriminator.
+    ttl_seconds: dynamic (window_seconds + 1)
+    value_type: ZSET (sorted set)
+  ratelimit:token_bucket:
+    pattern: '{domain_scope}:tb:{bucket_key}'
+    scope: domain
+    component: neoaxios_resilience_kit.ratelimit
+    feature: token_bucket
+    description: |-
+      Token bucket state (HASH with fields: last_refill, tokens). Prefix 'tb:' is the algorithm discriminator. Used by TokenBucketAlgorithm Lua script for atomic refill-and-consume.
+    ttl_seconds: dynamic (timeout_seconds, default 2 * window_seconds)
+    value_type: 'HASH (last_refill: float, tokens: float)'

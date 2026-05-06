@@ -1,0 +1,102 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Redis Cluster Container Definition (3rdparty)
+#
+# Canonical image definition for a 3-node Redis Cluster. Uses the baked
+# neoaxios/redis image which carries the Tier-1 cache config and Tier-2
+# cluster overlay at /etc/redis/redis.conf and /etc/redis/cluster.conf.
+# Three redis-server processes (ports 7010/7011/7012) run inside a single
+# Alpine container and are joined into a 3-master cluster at startup.
+#
+# CLUSTER_AUTO_BOOTSTRAP is set to 0 — the bootstrap orchestrator (this
+# command script) is responsible for forming the cluster; the image's
+# single-node auto-bootstrap MUST NOT race against the multi-node join.
+#
+# Used by: cluster-topology integration tests.
+#
+# 3rdparty service — all keys use TTL, no durable state.
+#
+# Usage (_include directive):
+#   docker_images:
+#     _include:
+#       - redis-cluster.yaml
+#     _deploy_to: all
+
+name: redis-cluster
+image: neoaxios/redis:latest
+
+ports:
+  - "7010:7010"
+  - "7011:7011"
+  - "7012:7012"
+
+environment:
+  REDIS_MODE: cluster
+  CLUSTER_AUTO_BOOTSTRAP: "0"
+
+volumes:
+  # Container log collection (stdout/stderr redirect handled by the baked
+  # entrypoint; this mount is the destination).
+  - "/var/log/neo:/var/log/neo"
+
+# Override the baked ENTRYPOINT because this fixture runs 3 redis-server
+# processes in one container and forms the cluster after they're up. The
+# baked config files at /etc/redis/redis.conf and /etc/redis/cluster.conf
+# are reused — no inline config.
+entrypoint: [""]
+command:
+  - "sh"
+  - "-c"
+  - |
+    LOG_DIR=${CONTAINER_LOG_DIR:-/var/log/neo}/$(hostname)/3rdparty/redis-cluster
+    mkdir -p $LOG_DIR
+
+    # Detect host IP for cluster-announce-ip so external clients can
+    # connect after node discovery (avoids 127.0.0.1 redirect failures).
+    HOST_IP=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
+    echo "cluster-announce-ip: $HOST_IP" >> $LOG_DIR/cluster-create.log
+
+    # Use the baked redis.conf + cluster.conf as a single effective config.
+    # Per-node overrides (port, announce, dir, cluster-config-file) are
+    # passed as CLI args — redis-server applies them on top of the baked
+    # directives. No config inlining.
+    cat /etc/redis/redis.conf /etc/redis/cluster.conf > /tmp/redis-effective.conf
+
+    for PORT in 7010 7011 7012; do
+      mkdir -p /tmp/$PORT
+      redis-server /tmp/redis-effective.conf \
+        --port $PORT \
+        --cluster-announce-ip $HOST_IP \
+        --cluster-announce-port $PORT \
+        --cluster-announce-bus-port $((PORT + 10000)) \
+        --cluster-config-file /tmp/$PORT/nodes.conf \
+        --dir /tmp/$PORT \
+        >> $LOG_DIR/redis-$PORT.log 2>&1 &
+    done
+
+    sleep 2
+
+    redis-cli --cluster create \
+      127.0.0.1:7010 127.0.0.1:7011 127.0.0.1:7012 \
+      --cluster-replicas 0 --cluster-yes \
+      >> $LOG_DIR/cluster-create.log 2>&1
+
+    tail -f $LOG_DIR/redis-7010.log
+
+health_check:
+  command: ["sh", "-c", "redis-cli -p 7010 cluster info | grep cluster_state:ok"]
+  initial_timeout: 15
+  max_attempts: 10
+  backoff_multiplier: 2

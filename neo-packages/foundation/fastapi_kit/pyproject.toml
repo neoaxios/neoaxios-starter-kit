@@ -1,0 +1,118 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neoaxios-fastapi-kit"
+version = "0.2.1"
+description = "Production toolkit for FastAPI services: auth, middleware, telemetry, and operational best practices"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "NeoAxios Engineering", email = "engineering@neoaxios.com"}
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: FastAPI",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "fastapi>=0.104.0",
+    "neoaxios-logging>=0.2.1",
+    "neoaxios-resilience-kit>=0.2.1",
+    "neoaxios-secure-config>=0.2.1",
+    "neoaxios-secure-cache>=0.2.1",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "prometheus-client>=0.20.0",
+    "pyyaml>=6.0.0",
+    "pyjwt>=2.8.0",
+    "cryptography>=46.0.7",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+# Optional Redis cache backend support
+redis = [
+    "redis>=5.0.0",
+]
+# Test dependencies (for running test suite)
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
+    "redis>=5.0.0",
+    "respx>=0.21.0",
+    "neoaxios-test-foundation>=0.2.1",  # shared test infra: redis fixtures, stats, namespacing
+]
+# Development dependencies (test + linting/formatting)
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "redis>=5.0.0",
+    "respx>=0.21.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/neoaxios/neoaxios-starter-kit"
+Documentation = "https://github.com/neoaxios/neoaxios-starter-kit/tree/main/neo-packages/foundation/fastapi_kit"
+Repository = "https://github.com/neoaxios/neoaxios-starter-kit"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["neoaxios_fastapi_kit*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--import-mode=importlib"
+asyncio_mode = "auto"
+markers = [
+    "core: mark test as core functionality validation",
+    "integration: mark test as integration test",
+    "parallel: mark test as safe for parallel execution",
+    "scale: marks tests as scale/performance tests (require real Redis, high concurrency)",
+    "security: mark test as security-related",
+]
+filterwarnings = [
+    # Suppress Python 3.12+ fork deprecation warning (graceful solution)
+    # Fork is acceptable for validation tests with proper cleanup and safety nets
+    "ignore::DeprecationWarning:multiprocessing.popen_fork",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+strict = false

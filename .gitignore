@@ -1,0 +1,137 @@
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+*.whl
+.eggs/
+# Python package build/dist output dirs — scoped so we don't accidentally
+# ignore source subpackages named `build` (e.g. neoaxios.build).
+/build/
+/dist/
+/logs/
+.build-cache/
+/neo-packages/*/build/
+/neo-packages/*/dist/
+/neo-packages/*/logs/
+# Nested package build artifacts (foundation/*, ai/*, examples/*, etc.)
+/neo-packages/*/*/build/
+/neo-packages/*/*/dist/
+/neo-packages/*/*/logs/
+# load-tests/ tree mirrors the same convention.
+/load-tests/build/
+/load-tests/dist/
+/load-tests/logs/
+/load-tests/*/build/
+/load-tests/*/dist/
+/load-tests/*/logs/
+/neo-packages/*/*/.coverage
+/neo-packages/*/*/coverage.xml
+/neo-packages/*/*/coverage.json
+# Contract registry runtime publishing dir
+/.contracts/
+develop-eggs/
+downloads/
+sdist/
+wheels/
+.installed.cfg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Python test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Node / JS (in case future tooling uses npm)
+# ---------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# ---------------------------------------------------------------------------
+# Editors and IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.\#*
+\#*\#
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Operating system
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Desktop.ini
+
+# ---------------------------------------------------------------------------
+# Local dev scratch / backups
+# ---------------------------------------------------------------------------
+*.log
+*.bak
+*.orig
+*.rej
+*.tmp
+/scratch/
+/tmp/
+
+# Local shell RC backups left by install.sh
+.bashrc.bak-*
+.zshrc.bak-*
+
+# Claude Code per-machine settings (never committed)
+.claude/settings.local.json
+# Claude Code /schedule task lock — runtime artifact, per-machine
+.claude/scheduled_tasks.lock
+
+# FlightRecorder session output (runtime artifact, per-machine)
+.qrs/
+
+# Local Claude tooling overlay (agents, capabilities, standards,
+# templates, abstraction registry). Materialized locally and never
+# part of the published artifact.
+/.devkit/
+
+# Telemetry runtime artifacts (Logbook FlightRecorder)
+.telemetry/
+/neo-packages/*/.telemetry/
+/neo-packages/*/*/.telemetry/
+/docker-images/
+
+# Shared Claude Code + governance content overlaid locally. These paths
+# are populated by tooling but never committed — editing them here does
+# not persist.
+/guides/standards
+/guides/templates
+/guides/practices
+/docs/agents/AGENT-ARCHITECTURE.md
+/docs/agents/AGENT-CATALOG.md
+/docs/agents/README.md
+/docs/capabilities/CAPABILITIES.template.md
+/docs/capabilities/INDEX.md

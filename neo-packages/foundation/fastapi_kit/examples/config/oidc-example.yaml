@@ -1,0 +1,387 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# OIDC Configuration Examples
+#
+# This file demonstrates OIDC decoder configuration for generic OpenID Connect
+# providers. Use these examples as templates for configuring your own OIDC
+# authentication.
+#
+# OIDC (OpenID Connect) is an identity layer on top of OAuth 2.0 that allows
+# clients to verify the identity of end-users and obtain basic profile information.
+#
+# Common OIDC providers:
+# - Google (accounts.google.com)
+# - Microsoft Azure AD (login.microsoftonline.com)
+# - Generic OIDC servers (self-hosted)
+#
+# For provider-specific configurations, see:
+# - okta-example.yaml (Okta)
+# - auth0-example.yaml (Auth0)
+# - keycloak-example.yaml (Keycloak)
+
+---
+# =============================================================================
+# Example 1: Google OIDC Configuration
+# =============================================================================
+#
+# Google Sign-In uses OpenID Connect for authentication.
+# This is the most common use case for public web applications.
+#
+# Setup:
+# 1. Go to Google Cloud Console (console.cloud.google.com)
+# 2. Create a new project or select existing
+# 3. Enable Google+ API
+# 4. Create OAuth 2.0 credentials
+# 5. Configure authorized redirect URIs
+# 6. Use client ID and client secret below
+
+google_oidc:
+  # OIDC issuer URL (must be HTTPS)
+  # This is the base URL that issues tokens
+  # Google uses: https://accounts.google.com
+  issuer: "https://accounts.google.com"
+
+  # OAuth 2.0 client ID from Google Cloud Console
+  # Format: {client-id}.apps.googleusercontent.com
+  # This identifies your application to Google
+  client_id: "your-client-id.apps.googleusercontent.com"
+
+  # OAuth 2.0 client secret (optional for public clients)
+  # For confidential clients (server-side), provide client secret
+  # Supports environment variable references: env:GOOGLE_CLIENT_SECRET
+  # Or file references: file:///run/secrets/google-client-secret
+  client_secret: "env:GOOGLE_CLIENT_SECRET"
+
+  # Expected audience claim (aud) in tokens
+  # For Google, this is typically the client_id
+  # If omitted, defaults to client_id
+  audience: "your-client-id.apps.googleusercontent.com"
+
+  # JWKS (JSON Web Key Set) endpoint URL for public key retrieval
+  # Google rotates keys automatically, so always fetch from this endpoint
+  jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+
+  # Clock skew tolerance in seconds
+  # Allows for time drift between token issuer and validator
+  # Recommended: 30 seconds for distributed systems
+  # Range: 0-300 seconds
+  clock_skew_seconds: 30
+
+  # OIDC Discovery configuration (optional)
+  # Auto-discover OIDC endpoints from issuer
+  discovery:
+    # Enable automatic discovery of OIDC endpoints
+    # If true, jwks_uri is fetched from {issuer}/.well-known/openid-configuration
+    auto_discover: true
+
+    # Discovery endpoint URL (optional, auto-constructed if not provided)
+    # Format: {issuer}/.well-known/openid-configuration
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+
+  # JWKS caching configuration (recommended for production)
+  cache:
+    # Cache backend type: "memory" or "redis"
+    # memory: In-memory cache (single server)
+    # redis: Redis cache (distributed systems)
+    backend: "memory"
+
+    # TTL for cached JWKS entries in seconds
+    # OIDC spec recommends 24 hours (86400 seconds)
+    # Keys remain valid until TTL expires or manual invalidation
+    ttl_seconds: 86400
+
+    # Redis configuration (only used if backend is "redis")
+    redis:
+      # Redis connection URL
+      # Formats:
+      #   redis://localhost:6379
+      #   redis://:password@localhost:6379/0
+      #   rediss://localhost:6380 (TLS)
+      url: "env:REDIS_URL"
+
+      # Redis key prefix for JWKS cache entries
+      # Keys stored as: {prefix}:jwks:{issuer}
+      prefix: "oidc"
+
+---
+# =============================================================================
+# Example 2: Azure AD (Microsoft) OIDC Configuration
+# =============================================================================
+#
+# Azure AD uses OpenID Connect for Microsoft accounts and organizational accounts.
+#
+# Setup:
+# 1. Go to Azure Portal (portal.azure.com)
+# 2. Navigate to Azure Active Directory > App registrations
+# 3. Create a new app registration
+# 4. Note the Application (client) ID and Directory (tenant) ID
+# 5. Create a client secret under Certificates & secrets
+# 6. Configure redirect URIs under Authentication
+
+azure_ad_oidc:
+  # Azure AD issuer URL format:
+  # https://login.microsoftonline.com/{tenant-id}/v2.0
+  #
+  # {tenant-id} can be:
+  # - Specific tenant ID (GUID)
+  # - "common" (any Microsoft account or work/school account)
+  # - "organizations" (work/school accounts only)
+  # - "consumers" (personal Microsoft accounts only)
+  issuer: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+
+  # Application (client) ID from Azure app registration
+  # Format: GUID (e.g., 12345678-1234-1234-1234-123456789012)
+  client_id: "env:AZURE_CLIENT_ID"
+
+  # Client secret from Azure app registration
+  # IMPORTANT: Store securely, never commit to source control
+  client_secret: "file:///run/secrets/azure-client-secret"
+
+  # Expected audience claim
+  # For Azure AD, use client_id or custom API identifier
+  audience: "api://{client-id}"
+
+  # Azure AD JWKS endpoint
+  # Format: https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys
+  jwks_uri: "https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys"
+
+  # Clock skew (Azure AD recommendation: 5 minutes = 300 seconds)
+  clock_skew_seconds: 300
+
+  # Discovery configuration
+  discovery:
+    auto_discover: true
+    discovery_url: "https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration"
+
+  # Cache configuration
+  cache:
+    backend: "redis"  # Recommended for Azure AD (handles key rotation)
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "azure_ad"
+
+---
+# =============================================================================
+# Example 3: Generic OIDC Provider Configuration
+# =============================================================================
+#
+# This example shows configuration for any OIDC-compliant provider.
+# Use this template for self-hosted OIDC servers or less common providers.
+
+generic_oidc:
+  # OIDC issuer URL (must be HTTPS)
+  # This is the base URL of your OIDC provider
+  # Example: https://oidc.example.com
+  issuer: "env:OIDC_ISSUER"
+
+  # OAuth 2.0 client ID from your OIDC provider
+  client_id: "env:OIDC_CLIENT_ID"
+
+  # OAuth 2.0 client secret (if confidential client)
+  # Use environment variable or file reference for security
+  client_secret: "env:OIDC_CLIENT_SECRET"
+
+  # Expected audience claim (optional)
+  # If your OIDC provider requires audience validation
+  audience: "env:OIDC_AUDIENCE"
+
+  # JWKS endpoint URL
+  # Most OIDC providers expose this at:
+  # {issuer}/.well-known/jwks.json
+  jwks_uri: "env:OIDC_JWKS_URI"
+
+  # Clock skew tolerance
+  clock_skew_seconds: 30
+
+  # Discovery configuration
+  discovery:
+    # Enable auto-discovery
+    # If enabled, OIDC endpoints are fetched from:
+    # {issuer}/.well-known/openid-configuration
+    auto_discover: true
+
+  # Cache configuration
+  cache:
+    backend: "memory"
+    ttl_seconds: 86400
+
+---
+# =============================================================================
+# Example 4: Custom OIDC Server (Self-Hosted)
+# =============================================================================
+#
+# Configuration for self-hosted OIDC servers (e.g., IdentityServer, custom implementation)
+
+custom_oidc:
+  # Your custom OIDC server issuer
+  issuer: "https://auth.mycompany.com"
+
+  # Client ID registered in your OIDC server
+  client_id: "my-application"
+
+  # Client secret (use secure secret management)
+  # File reference pattern: file:///path/to/secret
+  # Environment variable pattern: env:VARIABLE_NAME
+  client_secret: "file:///run/secrets/oidc-client-secret"
+
+  # Audience (your API identifier)
+  audience: "api://my-service"
+
+  # JWKS endpoint (standard path)
+  jwks_uri: "https://auth.mycompany.com/.well-known/jwks.json"
+
+  # Clock skew
+  clock_skew_seconds: 30
+
+  # Discovery
+  discovery:
+    auto_discover: true
+    discovery_url: "https://auth.mycompany.com/.well-known/openid-configuration"
+
+  # Cache with Redis for production
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      # Redis URL with password
+      url: "redis://:password@redis.mycompany.com:6379/0"
+      prefix: "custom_oidc"
+
+---
+# =============================================================================
+# Configuration Field Reference
+# =============================================================================
+#
+# This section documents all available configuration fields and their formats.
+
+field_reference:
+  # Required fields
+  required:
+    issuer:
+      type: "string"
+      format: "https://... (HTTPS required)"
+      description: "OIDC issuer URL that issues tokens"
+      example: "https://accounts.google.com"
+
+    client_id:
+      type: "string"
+      description: "OAuth 2.0 client ID from your OIDC provider"
+      example: "abc123.apps.googleusercontent.com"
+
+    jwks_uri:
+      type: "string"
+      format: "https://... (HTTPS required)"
+      description: "JWKS endpoint URL for public key retrieval"
+      example: "https://www.googleapis.com/oauth2/v3/certs"
+
+  # Optional fields
+  optional:
+    client_secret:
+      type: "string"
+      formats:
+        - "Plain text: 'secret-value'"
+        - "Environment variable: 'env:VARIABLE_NAME'"
+        - "File reference: 'file:///path/to/secret'"
+      description: "OAuth 2.0 client secret (confidential clients only)"
+      security: "NEVER commit plain text secrets to source control"
+
+    audience:
+      type: "string"
+      description: "Expected audience claim (aud) for validation"
+      default: "client_id value"
+      example: "api://my-service"
+
+    clock_skew_seconds:
+      type: "integer"
+      range: "0-300"
+      default: 30
+      description: "Clock skew tolerance for time-based claims (exp, iat, nbf)"
+
+  # Discovery configuration
+  discovery:
+    auto_discover:
+      type: "boolean"
+      default: false
+      description: "Auto-discover OIDC endpoints from issuer"
+
+    discovery_url:
+      type: "string"
+      format: "{issuer}/.well-known/openid-configuration"
+      description: "OIDC discovery endpoint URL"
+
+  # Cache configuration
+  cache:
+    backend:
+      type: "string"
+      enum: ["memory", "redis"]
+      default: "memory"
+      description: "Cache backend type"
+
+    ttl_seconds:
+      type: "integer"
+      default: 86400
+      description: "TTL for cached JWKS entries (24 hours recommended)"
+
+    redis:
+      url:
+        type: "string"
+        format: "redis://[user:password@]host:port[/db]"
+        description: "Redis connection URL"
+
+      prefix:
+        type: "string"
+        default: "oidc"
+        description: "Redis key prefix for cache entries"
+
+---
+# =============================================================================
+# Secret Management Patterns
+# =============================================================================
+#
+# Best practices for managing secrets in OIDC configuration
+
+secret_management:
+  # Environment variable reference (recommended for containers)
+  environment_variable:
+    pattern: "env:VARIABLE_NAME"
+    example: "env:OIDC_CLIENT_SECRET"
+    usage: "export OIDC_CLIENT_SECRET='your-secret-here'"
+    pros:
+      - "Works with container orchestration (Docker, Kubernetes)"
+      - "Easy to rotate without config changes"
+      - "Supported by most deployment platforms"
+
+  # File reference (recommended for Kubernetes secrets)
+  file_reference:
+    pattern: "file:///absolute/path/to/secret"
+    example: "file:///run/secrets/oidc-client-secret"
+    usage: |
+      # Kubernetes secret mount example
+      volumeMounts:
+        - name: oidc-secrets
+          mountPath: /run/secrets
+          readOnly: true
+    pros:
+      - "Integrates with Kubernetes secrets"
+      - "Works with Docker secrets"
+      - "File permissions provide access control"
+
+  # Plain text (NOT RECOMMENDED for production)
+  plain_text:
+    pattern: "secret-value"
+    example: "abc123def456"
+    warning: "NEVER use plain text secrets in production"
+    allowed_for: "Local development and testing only"

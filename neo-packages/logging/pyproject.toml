@@ -1,0 +1,92 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neoaxios-logging"
+version = "0.2.1"
+description = "Production-level telemetry and logging for distributed systems"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "NeoAxios Engineering", email = "engineering@neoaxios.com"}
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Logging",
+    "Topic :: System :: Monitoring",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "psutil>=5.8.0",
+    "structlog>=23.0.0",
+    "pyyaml>=5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=22.0.0",
+    "mypy>=0.950",
+]
+
+[project.scripts]
+# FlightRecorder management tools (full names)
+neoaxios-fr-cleanup = "neoaxios_logging.scripts.cleanup:main"
+neoaxios-fr-query = "neoaxios_logging.scripts.query:main"
+
+# Short aliases for convenience
+neo-fr-cleanup = "neoaxios_logging.scripts.cleanup:main"
+neo-fr-query = "neoaxios_logging.scripts.query:main"
+
+[project.urls]
+Homepage = "https://github.com/neoaxios/neoaxios-starter-kit"
+Documentation = "https://github.com/neoaxios/neoaxios-starter-kit/tree/main/neo-packages/logging"
+Repository = "https://github.com/neoaxios/neoaxios-starter-kit"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["neoaxios_logging*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+neoaxios_logging = ["config/defaults/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--import-mode=importlib"
+pythonpath = [".", "tests"]
+markers = [
+    "unit: Unit tests that test individual components in isolation",
+    "integration: Integration tests that test component interactions",
+    "e2e: End-to-end tests that test complete workflows",
+    "slow: Tests that take significant time to execute"
+]

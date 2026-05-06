@@ -1,0 +1,394 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# JWT Authentication Configuration Examples
+# ==========================================
+#
+# This file demonstrates various JWT authentication configuration patterns
+# for different environments and use cases.
+#
+# Usage:
+#   1. Copy relevant section to your config.yaml
+#   2. Replace placeholder values with your actual configuration
+#   3. Set environment-specific values via environment variables
+#
+# Security Note:
+#   Never commit actual secrets (keys, passwords) to version control.
+#   Use environment variables or secret management systems in production.
+
+# ==============================================================================
+# Example 1: Development Configuration (Simple)
+# ==============================================================================
+# For local development with minimal setup
+# Uses shared secret (HS256) - easy but less secure
+
+development:
+  jwt:
+    # Shared secret for token signing/validation
+    # WARNING: Change this and never commit real secrets!
+    secret: "dev-secret-key-change-me"
+
+    # Algorithm for development (HS256 is simpler but less secure)
+    algorithm: HS256
+
+    # Token validation
+    issuer: https://local.test
+    audience: null  # Don't validate audience in dev
+    leeway: 60      # Allow 1 minute clock skew for dev machines
+
+    # Disable strict validation for easier debugging
+    verify_exp: true
+    verify_iss: false  # Relaxed for dev
+    verify_aud: false  # No audience check in dev
+
+  # Simple in-memory cache for development
+  cache:
+    backend: memory
+    ttl_seconds: 300
+
+  # Minimal auth settings
+  auth:
+    require_tenant_isolation: false  # Relaxed for dev
+    audit_all_access: false
+    allow_impersonation: true  # Allow testing impersonation
+
+# ==============================================================================
+# Example 2: Staging Configuration (Intermediate)
+# ==============================================================================
+# For staging environment with RSA keys
+# Balances security with debugging capabilities
+
+staging:
+  jwt:
+    # RSA public key from file (more secure than shared secret)
+    public_key_path: /etc/secrets/jwt_public_key_staging.pem
+
+    # RSA algorithm (asymmetric - more secure)
+    algorithm: RS256
+
+    # Token validation
+    issuer: https://staging-auth.mycompany.com
+    audience: api://staging-service
+    leeway: 30  # 30 seconds clock skew tolerance
+
+    # Full validation enabled
+    verify_exp: true
+    verify_iss: true
+    verify_aud: true
+    verify_signature: true
+
+    # Custom claims mapping
+    claims_mapping:
+      user_id: sub
+      tenant_id: organization_id
+      roles: groups
+      email: email
+
+  # Redis cache for better performance
+  cache:
+    backend: redis
+    host: redis-staging.internal
+    port: 6379
+    db: 0
+    ttl_seconds: 300
+    negative_ttl_seconds: 60
+    key_prefix: "auth:staging:"
+
+  # Standard auth settings
+  auth:
+    require_tenant_isolation: true
+    audit_all_access: true  # Log everything in staging
+    allow_impersonation: true  # For testing support scenarios
+
+# ==============================================================================
+# Example 3: Production Configuration (Strict)
+# ==============================================================================
+# For production with maximum security
+# All secrets loaded from environment or secret management
+
+production:
+  jwt:
+    # Public key from mounted secret (Docker/Kubernetes)
+    # Actual path set via JWT_PUBLIC_KEY_PATH environment variable
+    public_key_path: /run/secrets/jwt_public_key
+
+    # Production-grade algorithm
+    algorithm: RS256
+
+    # Strict validation
+    issuer: https://auth.mycompany.com
+    audience: api://production-service
+    leeway: 10  # Minimal clock skew (servers should be in sync)
+
+    # All validation enabled
+    verify_exp: true
+    verify_iss: true
+    verify_aud: true
+    verify_signature: true
+
+    # Production claims mapping
+    claims_mapping:
+      user_id: sub
+      tenant_id: org_id
+      roles: groups
+      permissions: perms  # Custom permission claim
+
+  # Production Redis cluster
+  cache:
+    backend: redis
+    host: redis-cluster.production.svc.cluster.local
+    port: 6379
+    password_env: REDIS_PASSWORD  # Password from environment
+    db: 0
+    ttl_seconds: 300
+    negative_ttl_seconds: 60
+    key_prefix: "auth:prod:"
+    # Connection pooling
+    max_connections: 50
+    socket_timeout: 5
+    socket_connect_timeout: 5
+
+  # Strict authorization
+  auth:
+    require_tenant_isolation: true
+    audit_all_access: true
+    allow_impersonation: false  # Disabled in production
+    impersonation_roles:  # If enabled, only these roles can impersonate
+      - system_admin
+
+  # Application settings
+  app:
+    name: production-api
+    environment: production
+    debug: false
+    log_level: WARNING  # Only warnings and errors in production
+
+# ==============================================================================
+# Example 4: Multi-Provider Configuration
+# ==============================================================================
+# For applications accepting tokens from multiple identity providers
+
+multi_provider:
+  # Multiple JWT decoder configurations
+  jwt_providers:
+    # Azure AD configuration
+    azure:
+      issuer_pattern: "https://login\\.microsoftonline\\.com/.*"
+      tenant_id: "your-azure-tenant-id"
+      client_id: "your-azure-client-id"
+      audience: "api://your-app"
+
+    # AWS Cognito configuration
+    aws:
+      issuer_pattern: "https://cognito-idp\\..*\\.amazonaws\\.com/.*"
+      user_pool_id: "us-east-1_XXXXXXXXX"
+      region: us-east-1
+      client_id: "your-cognito-client-id"
+
+    # Google configuration
+    google:
+      issuer_pattern: "https://accounts\\.google\\.com.*"
+      client_id: "your-google-client-id"
+      hosted_domain: "mycompany.com"  # Optional: restrict to domain
+
+    # Custom provider
+    custom:
+      issuer_pattern: "https://auth\\.mycompany\\.com/.*"
+      public_key_path: /etc/secrets/custom_provider_public_key.pem
+      algorithm: RS256
+      issuer: https://auth.mycompany.com
+      audience: api://my-service
+
+  # Shared cache configuration
+  cache:
+    backend: redis
+    host: redis-cluster.svc.cluster.local
+    port: 6379
+    ttl_seconds: 300
+
+# ==============================================================================
+# Example 5: Custom Claims and Permissions
+# ==============================================================================
+# For applications with complex claims mapping
+
+custom_claims:
+  jwt:
+    public_key_path: /etc/secrets/jwt_public_key.pem
+    algorithm: RS256
+    issuer: https://auth.example.com
+    audience: api://my-service
+
+    # Map JWT claims to IdentityContext fields
+    claims_mapping:
+      # Standard claims
+      user_id: sub
+      tenant_id: organization_id
+      issuer: iss
+
+      # Role mapping from various sources
+      roles: groups  # LDAP groups become roles
+
+      # Custom attributes for ABAC
+      email: email
+      department: dept
+      clearance_level: clearance
+      location: office_location
+
+    # Role to permission mapping
+    # Automatically grant permissions based on roles
+    role_permissions:
+      admin:
+        - "*:*"  # Full access
+      editor:
+        - "document:read"
+        - "document:write"
+        - "document:delete"
+      viewer:
+        - "document:read"
+      analyst:
+        - "document:read"
+        - "report:read"
+        - "report:generate"
+
+  # Permission cache (important for role-based mapping)
+  cache:
+    backend: redis
+    host: localhost
+    port: 6379
+    ttl_seconds: 600  # Cache longer since roles don't change often
+
+# ==============================================================================
+# Example 6: Testing Configuration
+# ==============================================================================
+# For integration tests and CI/CD pipelines
+
+testing:
+  jwt:
+    # Use fixed secret for reproducible tests
+    secret: "test-secret-for-ci-cd"
+    algorithm: HS256
+
+    # Relaxed validation for testing
+    issuer: https://test.local
+    audience: null
+    leeway: 300  # Large leeway for CI environments
+
+    # Fast expiration for testing token refresh
+    default_expiry_seconds: 60
+
+  # In-memory cache for tests (fast, isolated)
+  cache:
+    backend: memory
+
+  # Permissive auth for integration tests
+  auth:
+    require_tenant_isolation: false
+    audit_all_access: false
+    allow_impersonation: true
+
+  # Test-specific settings
+  test:
+    generate_test_tokens: true
+    mock_revocation: false
+    strict_validation: false
+
+# ==============================================================================
+# Example 7: High-Security Configuration
+# ==============================================================================
+# For applications with strict security requirements (financial, healthcare)
+
+high_security:
+  jwt:
+    # Short-lived tokens
+    public_key_path: /run/secrets/jwt_public_key
+    algorithm: ES256  # Elliptic curve (modern, secure)
+
+    # Strict validation
+    issuer: https://auth.secure.mycompany.com
+    audience: api://secure-service
+    leeway: 0  # No clock skew tolerance
+
+    # All checks enabled
+    verify_exp: true
+    verify_iss: true
+    verify_aud: true
+    verify_signature: true
+    verify_nbf: true  # Check "not before" claim
+
+    # Require JTI for revocation checking
+    require_jti: true
+
+    # Maximum token age (even if not expired)
+    max_age_seconds: 900  # 15 minutes max
+
+  # Revocation checking
+  revocation:
+    enabled: true
+    backend: redis
+    check_on_every_request: true
+    cache_ttl: 60  # Cache revocation status for 1 minute only
+
+  # Cache with short TTL
+  cache:
+    backend: redis
+    host: redis-secure.internal
+    port: 6379
+    ttl_seconds: 60  # Short cache time
+    negative_ttl_seconds: 30
+
+  # Strict authorization
+  auth:
+    require_tenant_isolation: true
+    audit_all_access: true
+    audit_backend: siem  # Send to security information and event management
+    allow_impersonation: false
+
+  # Security monitoring
+  security:
+    log_all_auth_failures: true
+    alert_on_repeated_failures: true
+    failure_threshold: 3
+    lockout_duration_seconds: 300
+
+# ==============================================================================
+# Environment Variable Overrides
+# ==============================================================================
+# All configurations can be overridden with environment variables:
+#
+# JWT Configuration:
+#   JWT_PUBLIC_KEY_PATH=/path/to/key.pem
+#   JWT_SECRET=secret-key
+#   JWT_ALGORITHM=RS256
+#   JWT_ISSUER=https://auth.example.com
+#   JWT_AUDIENCE=api://my-service
+#   JWT_LEEWAY=30
+#
+# Cache Configuration:
+#   CACHE_BACKEND=redis
+#   REDIS_HOST=localhost
+#   REDIS_PORT=6379
+#   REDIS_PASSWORD=secret
+#   CACHE_TTL_SECONDS=300
+#
+# Auth Configuration:
+#   AUTH_REQUIRE_TENANT_ISOLATION=true
+#   AUTH_AUDIT_ALL_ACCESS=true
+#   AUTH_ALLOW_IMPERSONATION=false
+#
+# Example usage in code:
+#   config = load_config("config.yaml")
+#   config["jwt"]["public_key_path"] = os.getenv(
+#       "JWT_PUBLIC_KEY_PATH",
+#       config["jwt"]["public_key_path"]
+#   )

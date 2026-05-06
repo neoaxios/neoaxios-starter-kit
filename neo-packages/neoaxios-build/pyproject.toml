@@ -1,0 +1,92 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neoaxios-build-system"
+version = "0.2.1"
+description = "Build system for multi-package Python projects with dependency-aware parallel builds and intelligent caching"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "NeoAxios", email = "noreply@neoaxios.com"}
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["build", "multi-package", "cache", "parallel"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+]
+
+dependencies = [
+    # NO neoaxios-* packages - this is a build tool!
+    "build>=1.0.0",  # PyPA build for wheel creation
+    "PyYAML>=6.0",   # For parsing docker.yaml metadata files
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+progress = [
+    "rich>=13.0",  # Optional progress bars
+]
+
+[project.scripts]
+neoaxios-build = "neoaxios.build.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/neoaxios/neoaxios-starter-kit"
+Repository = "https://github.com/neoaxios/neoaxios-starter-kit"
+Documentation = "https://github.com/neoaxios/neoaxios-starter-kit/tree/main/neo-packages/neoaxios-build"
+Issues = "https://github.com/neoaxios/neoaxios-starter-kit/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["neoaxios*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --strict-markers"
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, realistic scenarios)",
+    "slow: Slow tests (>1s execution time)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:multiprocessing.popen_fork",
+]
+
+[tool.coverage.run]
+source = ["neoaxios"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false

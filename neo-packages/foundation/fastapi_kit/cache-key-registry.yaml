@@ -1,0 +1,82 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Cache Key Registry — package-scoped
+#
+# Source of truth for Redis key families owned by this package. The
+# secure_cache loader discovers all `**/cache-key-registry.yaml` files
+# from the repo root and merges them into a single in-memory
+# CacheKeyRegistry; key names must be globally unique across all
+# per-package files.
+#
+# Schema:
+#   version: "1"
+#   package: <name>
+#   keys:
+#     <key-name>:
+#       pattern: ...
+#       scope: user|tenant|app|global
+#       component: ...
+#       feature: ...
+#       description: ...
+#       ttl_seconds: <int>
+#       value_type: ...
+
+version: '1'
+package: neoaxios_fastapi_kit
+keys:
+  auth:graph_token:
+    pattern: '{tenant_scope}:graph_token'
+    scope: tenant
+    component: neoaxios_fastapi_kit.auth
+    feature: graph_token
+    description: Microsoft Graph API tokens
+    ttl_seconds: null
+    value_type: TokenRecord
+  auth:jwks:
+    pattern: '{base}:jwks:{base64_issuer}'
+    scope: app
+    component: neoaxios_fastapi_kit.auth
+    feature: jwks
+    description: OIDC JWKS key sets (issuer base64-encoded)
+    ttl_seconds: 86400
+    value_type: Dict (JWKS keys)
+  auth:permissions:
+    pattern: '{user_scope}:permissions'
+    scope: user
+    component: neoaxios_fastapi_kit.auth
+    feature: permissions
+    description: User permission sets
+    ttl_seconds: 300
+    value_type: FrozenSet[str]
+  auth:prefix:tenant:
+    pattern: '{tenant_scope}:'
+    scope: tenant
+    component: neoaxios_fastapi_kit.auth
+    feature: prefix
+    description: Invalidation prefix for all tenant-scoped keys
+  auth:prefix:user:
+    pattern: '{user_scope}:'
+    scope: user
+    component: neoaxios_fastapi_kit.auth
+    feature: prefix
+    description: Invalidation prefix for all user-scoped keys
+  auth:roles:
+    pattern: '{user_scope}:roles'
+    scope: user
+    component: neoaxios_fastapi_kit.auth
+    feature: roles
+    description: Role enrichment from external providers
+    ttl_seconds: 3600
+    value_type: FrozenSet[str]

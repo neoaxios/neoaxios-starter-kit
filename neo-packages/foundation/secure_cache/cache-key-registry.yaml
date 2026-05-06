@@ -1,0 +1,107 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Cache Key Registry — package-scoped
+#
+# Source of truth for Redis key families owned by this package. The
+# secure_cache loader discovers all `**/cache-key-registry.yaml` files
+# from the repo root and merges them into a single in-memory
+# CacheKeyRegistry; key names must be globally unique across all
+# per-package files.
+#
+# Schema:
+#   version: "1"
+#   package: <name>
+#   keys:
+#     <key-name>:
+#       pattern: ...
+#       scope: user|tenant|app|global
+#       component: ...
+#       feature: ...
+#       description: ...
+#       ttl_seconds: <int>
+#       value_type: ...
+#
+# `namespace_hierarchy:` lives only in this file because secure_cache owns
+# the namespace convention used by every other consumer.
+
+version: '1'
+package: secure_cache
+namespace_hierarchy:
+  segments:
+  - name: org
+    label: org
+    required: true
+  - name: division
+    label: div
+    required: false
+  - name: env
+    label: env
+    required: true
+  - name: service
+    label: svc
+    required: true
+  - name: app
+    label: app
+    required: true
+  - name: version
+    label: null
+    required: true
+  - name: domain
+    label: d
+    required: false
+  - name: tenant
+    label: t
+    required: false
+  - name: user
+    label: u
+    required: false
+keys:
+  security:canary:
+    pattern: '{domain_scope}:canary:{tenant_id}'
+    scope: domain
+    component: secure_cache.security
+    feature: canary
+    description: Canary integrity monitoring per tenant
+  security:perm_cache:
+    pattern: perm_cache:{hmac_hash}
+    scope: global
+    component: secure_cache.security
+    feature: perm_cache
+    description: HMAC-obfuscated permission cache entries
+  security:perm_lookup:
+    pattern: perm_lookup:{tenant_id}:{user_id}
+    scope: global
+    component: secure_cache.security
+    feature: perm_lookup
+    description: Reverse lookup for targeted invalidation
+  security:perm_seq:
+    pattern: '{domain_scope}:perm_seq:{tenant_id}:{user_id}'
+    scope: domain
+    component: secure_cache.security
+    feature: perm_seq
+    description: Per-user sequence number counter (replay protection)
+  security:signing_prefix_index:
+    pattern: '{domain_scope}:spx:{prefix_hash}:{obfuscated_key}'
+    scope: domain
+    component: secure_cache.security.signing
+    feature: prefix_index
+    description: HMAC signing prefix index for cross-process invalidation
+    value_type: STRING (obfuscated)
+  security:tenant_salt:
+    pattern: '{domain_scope}:tenant_salt:{tenant_id}'
+    scope: domain
+    component: secure_cache.security
+    feature: tenant_salt
+    description: Per-tenant HKDF salt storage

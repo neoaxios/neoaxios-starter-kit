@@ -1,0 +1,407 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Auth0 OIDC Configuration Examples
+#
+# Auth0 is an authentication and authorization platform that provides OIDC/OAuth 2.0
+# services. This file shows configuration examples for:
+#
+# - Basic Auth0 setup
+# - Multiple Auth0 applications
+# - API authentication (audience)
+# - Custom claims with namespaces
+# - Auth0 Organizations
+#
+# Auth0 Setup:
+# 1. Sign up at auth0.com or use existing tenant
+# 2. Create an application (Applications > Create Application)
+# 3. Choose application type (Regular Web, SPA, Native, M2M)
+# 4. Configure Allowed Callback URLs, Logout URLs, Web Origins
+# 5. Note Domain, Client ID, and Client Secret
+# 6. Create API (Applications > APIs > Create API) for access tokens
+
+---
+# =============================================================================
+# Example 1: Basic Auth0 Configuration
+# =============================================================================
+#
+# Basic Auth0 setup for a single application.
+#
+# Best for:
+# - Simple applications
+# - Getting started with Auth0
+# - Single-page applications (SPAs)
+
+auth0_basic:
+  # Auth0 domain (WITHOUT https:// prefix)
+  # Format: {tenant}.{region}.auth0.com
+  # Examples:
+  #   - myapp.us.auth0.com (US region)
+  #   - myapp.eu.auth0.com (Europe region)
+  #   - myapp.au.auth0.com (Australia region)
+  # Custom domains also supported: auth.mycompany.com
+  domain: "myapp.us.auth0.com"
+
+  # OAuth 2.0 client ID from Auth0 application
+  # Found in: Applications > {Your App} > Settings > Basic Information
+  # Format: 32-character alphanumeric string
+  client_id: "abc123def456ghi789jkl012mno345pq"
+
+  # OAuth 2.0 client secret (for confidential clients)
+  # Found in: Applications > {Your App} > Settings > Basic Information
+  # NOT needed for SPAs or native apps (public clients)
+  client_secret: "env:AUTH0_CLIENT_SECRET"
+
+  # Expected audience claim (optional for ID tokens, required for access tokens)
+  # For ID tokens: audience is client_id (automatic)
+  # For access tokens: audience is your API identifier
+  # Created in: Applications > APIs > {Your API} > Settings > Identifier
+  audience: null  # Omit for ID tokens
+
+  # OAuth scopes (optional)
+  # Space-separated list of scopes
+  # Standard scopes: openid, profile, email
+  # Custom scopes: defined in your Auth0 API
+  scope: "openid profile email"
+
+  # Clock skew tolerance (Auth0 recommendation: 30 seconds)
+  clock_skew_seconds: 30
+
+  # Issuer and JWKS URI are auto-constructed from domain
+  # Issuer: https://{domain}/ (note trailing slash is REQUIRED)
+  # JWKS URI: https://{domain}/.well-known/jwks.json
+
+  # Cache configuration
+  cache:
+    backend: "memory"
+    ttl_seconds: 86400  # 24 hours
+
+---
+# =============================================================================
+# Example 2: Auth0 with API Audience
+# =============================================================================
+#
+# Configuration for validating Auth0 access tokens for API authorization.
+#
+# Setup:
+# 1. Create API: Applications > APIs > Create API
+# 2. Set Name, Identifier (audience), and Signing Algorithm (RS256)
+# 3. Define permissions (scopes) under Permissions tab
+# 4. Assign permissions to applications or users
+#
+# Best for:
+# - Backend APIs
+# - Microservices
+# - Resource servers requiring access tokens
+
+auth0_api:
+  # Auth0 domain
+  domain: "myapp.us.auth0.com"
+
+  # Client ID from Auth0 application
+  client_id: "xyz789abc123def456ghi012jkl345mn"
+
+  # Client secret (required for confidential clients)
+  client_secret: "file:///run/secrets/auth0-client-secret"
+
+  # API identifier (REQUIRED for access tokens)
+  # This is your API's unique identifier in Auth0
+  # Format: https://... (URL format recommended)
+  # Example: "https://api.myapp.com"
+  audience: "https://api.myapp.com"
+
+  # OAuth scopes for API access
+  # Space-separated list of permissions
+  # Defined in: Applications > APIs > {Your API} > Permissions
+  scope: "read:users write:users read:products write:products"
+
+  # Clock skew
+  clock_skew_seconds: 30
+
+  # Cache with Redis for production
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "auth0_api"
+
+---
+# =============================================================================
+# Example 3: Auth0 Multi-Application Configuration
+# =============================================================================
+#
+# Configuration for multiple Auth0 applications in one tenant.
+# Each application has its own client ID and may access different APIs.
+
+auth0_multi_app:
+  # Web application (Regular Web App)
+  web_app:
+    domain: "mycompany.us.auth0.com"
+    client_id: "web_abc123def456"  # Web app client ID
+    client_secret: "env:AUTH0_WEB_SECRET"
+    audience: "https://api.mycompany.com"
+    scope: "openid profile email read:data"
+
+  # Single-page application (SPA)
+  spa_app:
+    domain: "mycompany.us.auth0.com"
+    client_id: "spa_xyz789abc123"  # SPA client ID
+    client_secret: null  # Public client, no secret
+    audience: "https://api.mycompany.com"
+    scope: "openid profile email"
+
+  # Mobile application (Native)
+  mobile_app:
+    domain: "mycompany.us.auth0.com"
+    client_id: "mobile_def456ghi789"  # Mobile client ID
+    client_secret: null  # Public client, no secret
+    audience: "https://api.mycompany.com"
+    scope: "openid profile email offline_access"  # Include offline_access for refresh tokens
+
+  # Machine-to-Machine (M2M) application
+  m2m_app:
+    domain: "mycompany.us.auth0.com"
+    client_id: "m2m_jkl012mno345"  # M2M client ID
+    client_secret: "env:AUTH0_M2M_SECRET"
+    audience: "https://api.mycompany.com"
+    scope: "read:all write:all"
+
+  # Shared cache
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "auth0_multi"
+
+---
+# =============================================================================
+# Example 4: Auth0 with Custom Claims (Namespaced)
+# =============================================================================
+#
+# Auth0 requires custom claims to use namespaced format (https://...).
+#
+# Custom claims setup:
+# 1. Create Action: Actions > Flows > Login > Custom
+# 2. Add custom claims to token in Action code
+# 3. Use namespace format: https://mycompany.com/...
+#
+# Example Action code:
+# ```javascript
+# exports.onExecutePostLogin = async (event, api) => {
+#   const namespace = 'https://mycompany.com';
+#   api.idToken.setCustomClaim(`${namespace}/roles`, event.user.app_metadata.roles);
+#   api.accessToken.setCustomClaim(`${namespace}/department`, event.user.user_metadata.department);
+# };
+# ```
+
+auth0_custom_claims:
+  domain: "mycompany.us.auth0.com"
+  client_id: "custom_abc123def456"
+  client_secret: "env:AUTH0_CLIENT_SECRET"
+  audience: "https://api.mycompany.com"
+  scope: "openid profile email"
+
+  # Custom claims configuration (for reference, configured in Auth0 Actions)
+  custom_claims:
+    # Roles claim (from app_metadata)
+    roles:
+      namespace: "https://mycompany.com"
+      claim_name: "https://mycompany.com/roles"
+      source: "user.app_metadata.roles"
+      type: "array"
+      include_in: ["ID token", "Access token"]
+
+    # Department claim (from user_metadata)
+    department:
+      namespace: "https://mycompany.com"
+      claim_name: "https://mycompany.com/department"
+      source: "user.user_metadata.department"
+      type: "string"
+      include_in: ["ID token"]
+
+    # Custom permissions claim
+    permissions:
+      namespace: "https://mycompany.com"
+      claim_name: "https://mycompany.com/permissions"
+      source: "event.authorization.permissions"
+      type: "array"
+      include_in: ["Access token"]
+
+---
+# =============================================================================
+# Example 5: Auth0 Organizations
+# =============================================================================
+#
+# Auth0 Organizations enable B2B multi-tenancy.
+#
+# Setup:
+# 1. Enable Organizations: Settings > Advanced > Organizations
+# 2. Create organizations: Organizations > Create Organization
+# 3. Add members and configure connections
+# 4. Use org_id claim in tokens
+#
+# Best for:
+# - B2B SaaS applications
+# - Multi-tenant applications
+# - Enterprise customers with separate identity providers
+
+auth0_organizations:
+  domain: "b2b-saas.us.auth0.com"
+  client_id: "org_abc123def456"
+  client_secret: "env:AUTH0_CLIENT_SECRET"
+  audience: "https://api.b2b-saas.com"
+  scope: "openid profile email"
+
+  # Organizations configuration
+  organizations:
+    # Enable organization name in login prompt
+    # User can select organization during login
+    prompt_for_organization: true
+
+    # Organization claim in token
+    # Auth0 includes org_id claim automatically
+    organization_claim: "org_id"
+
+    # Example organizations
+    orgs:
+      - org_id: "org_abc123"
+        name: "Acme Corporation"
+        display_name: "Acme Corp"
+        connections: ["google-oauth2", "Username-Password-Authentication"]
+
+      - org_id: "org_xyz789"
+        name: "TechStart Inc"
+        display_name: "TechStart"
+        connections: ["samlp-okta"]  # Enterprise SSO
+
+---
+# =============================================================================
+# Environment Variable Reference for Auth0
+# =============================================================================
+
+environment_variables:
+  # Required variables
+  AUTH0_DOMAIN:
+    description: "Auth0 domain (WITHOUT https:// prefix)"
+    example: "myapp.us.auth0.com"
+    required: true
+    note: "Do NOT include protocol or trailing slash"
+
+  AUTH0_CLIENT_ID:
+    description: "OAuth 2.0 client ID from Auth0 application"
+    example: "abc123def456ghi789jkl012mno345pq"
+    required: true
+
+  # Optional variables
+  AUTH0_CLIENT_SECRET:
+    description: "OAuth 2.0 client secret (confidential clients only)"
+    example: "secret_abc123..."
+    required: false
+    security: "Store securely, never commit to source control"
+
+  AUTH0_AUDIENCE:
+    description: "API identifier (required for access tokens)"
+    example: "https://api.myapp.com"
+    required: false
+    note: "Required for API authentication, optional for ID tokens"
+
+  AUTH0_SCOPE:
+    description: "OAuth scopes (space-separated)"
+    default: "openid profile email"
+    example: "openid profile email read:users"
+    required: false
+
+  # Cache configuration
+  REDIS_URL:
+    description: "Redis connection URL for caching"
+    example: "redis://localhost:6379"
+    required: false
+
+---
+# =============================================================================
+# Auth0 Token Claims Reference
+# =============================================================================
+
+token_claims:
+  # Standard OIDC claims
+  standard:
+    sub:
+      description: "Subject (user ID in format provider|id)"
+      example: "auth0|507f1f77bcf86cd799439011"
+      type: "string"
+      format: "{provider}|{id}"
+      providers:
+        - "auth0"          # native Auth0 user
+        - "google-oauth2"  # Google social login
+        - "facebook"       # Facebook social login
+        - "samlp"          # SAML enterprise connection
+
+    iss:
+      description: "Issuer (Auth0 domain URL)"
+      example: "https://myapp.us.auth0.com/"
+      type: "string"
+      note: "Trailing slash is REQUIRED"
+
+    aud:
+      description: "Audience (client_id or API identifier)"
+      example: "abc123def456ghi789jkl012mno345pq"
+      type: "string or array"
+
+    exp:
+      description: "Expiration timestamp"
+      example: 1609459200
+      type: "integer (Unix timestamp)"
+
+    iat:
+      description: "Issued at timestamp"
+      example: 1609455600
+      type: "integer (Unix timestamp)"
+
+  # Auth0-specific claims
+  auth0_specific:
+    azp:
+      description: "Authorized party (client_id that requested token)"
+      example: "abc123def456ghi789jkl012mno345pq"
+      type: "string"
+
+    scope:
+      description: "OAuth scopes (space-separated)"
+      example: "openid profile email read:users"
+      type: "string"
+
+    org_id:
+      description: "Organization ID (Auth0 Organizations)"
+      example: "org_abc123"
+      type: "string"
+
+    email_verified:
+      description: "Email verification status"
+      example: true
+      type: "boolean"
+
+  # Custom claims (namespaced)
+  custom:
+    roles:
+      claim_name: "https://mycompany.com/roles"
+      description: "User roles"
+      example: ["admin", "user"]
+      type: "array"
+
+    department:
+      claim_name: "https://mycompany.com/department"
+      description: "User department"
+      example: "Engineering"
+      type: "string"

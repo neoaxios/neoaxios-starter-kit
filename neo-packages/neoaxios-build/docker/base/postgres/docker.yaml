@@ -1,0 +1,40 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# PostgreSQL + PgBouncer co-located image metadata
+#
+# Combines PostgreSQL 16 with PgBouncer transaction-mode pooling.
+# PgBouncer enforces a global connection cap, preventing stale connections
+# from crashed containers from exhausting max_connections.
+#
+# Clients connect to port 6432 (PgBouncer), not 5432 (PostgreSQL direct).
+image:
+  name: postgres
+  tag: latest
+  registry: neoaxios
+
+build:
+  base: postgres:16-alpine
+  context: .
+
+runtime:
+  # Generic readiness check — both Postgres (5432) and PgBouncer (6432)
+  # accept connections.  The Dockerfile HEALTHCHECK directive does the
+  # full check (with a postgres-side validation that defaults to the
+  # POSTGRES_USER/DB env vars supplied at runtime).  Downstream images
+  # that derive from this base typically override this with a
+  # service-specific healthcheck that knows which database to probe.
+  healthcheck:
+    command: "pg_isready -h 127.0.0.1 -p 6432 -q"
+  port: 6432

@@ -1,0 +1,42 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# NeoAxios foundation Python base image metadata.
+#
+# Tagged under the ``neoaxios/`` registry namespace; outputs land in
+# ``$NEOAXIOS_IMAGE_CACHE`` (default ``~/.cache/neoaxios/.docker-image-cache``).
+image:
+  name: python-base
+  tag: latest
+  registry: neoaxios
+
+build:
+  base: neoaxios/python:3.12-slim
+  context: ../..  # docker/ directory - allows access to scripts/
+
+dependencies:
+  wheels:
+    # Foundation packages only (see Dockerfile header: "Only FOUNDATION
+    # packages — application packages go in app images"). secure_config and
+    # neoaxios-logging are inherited from python-slim.
+    - neoaxios-config
+    - neoaxios-resilience-kit
+    - neoaxios-secure-cache
+    - neoaxios-fastapi-kit
+  images:
+    - neoaxios/python:3.12-slim
+
+runtime:
+  healthcheck: null
+  port: null

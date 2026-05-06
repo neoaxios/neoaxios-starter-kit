@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# nmake - NeoAxios Make wrapper
+# Runs make from the repository root, regardless of current directory
+#
+# Usage: nmake build
+#        nmake build-force
+#        nmake help
+#
+# This script finds the git repository root and runs make there,
+# allowing you to execute build commands from any subdirectory.
+
+set -e
+
+# Find repository root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+
+if [ -z "$REPO_ROOT" ]; then
+    echo "Error: Not in a git repository" >&2
+    exit 1
+fi
+
+if [ ! -f "$REPO_ROOT/Makefile" ]; then
+    echo "Error: No Makefile found at repository root: $REPO_ROOT" >&2
+    exit 1
+fi
+
+# Run make from repository root with all arguments passed through
+exec make -C "$REPO_ROOT" "$@"

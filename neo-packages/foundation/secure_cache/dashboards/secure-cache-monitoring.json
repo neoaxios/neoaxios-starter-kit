@@ -1,0 +1,342 @@
+{
+  "dashboard": {
+    "title": "Secure Cache Monitoring",
+    "tags": ["secure-cache", "security", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Signature Invalid (Critical)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cache_signature_invalid_total{tenant_id=~\"$tenant\"}[5m])",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Signature Invalid Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "CRITICAL: Signature verification failures detected. Possible cache tampering or key mismatch."
+        },
+        "yaxes": [
+          {"format": "ops", "label": "Invalid Signatures/sec"},
+          {"format": "short"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.01, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Decryption Failed (Critical)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cache_decryption_failed_total{tenant_id=~\"$tenant\"}[5m])",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Decryption Failed Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "CRITICAL: Decryption failures detected. Possible cache tampering or encryption key mismatch."
+        },
+        "yaxes": [
+          {"format": "ops", "label": "Decryption Failures/sec"},
+          {"format": "short"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.01, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Canary Mismatch (Critical)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "cache_canary_mismatch{tenant_id=~\"$tenant\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.5], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "1m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Canary Mismatch Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "CRITICAL: Canary mismatch detected. Cache integrity compromised - possible tampering."
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "OK"},
+              {"type": "value", "value": "1", "text": "TAMPERED"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.5, "color": "red"}
+              ]
+            },
+            "unit": "none"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Replay Attacks Detected (Warning)",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "rate(cache_replay_detected_total{tenant_id=~\"$tenant\"}[5m])",
+            "legendFormat": "{{tenant_id}}/{{user_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Replay Attack Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "WARNING: Replay attack attempts detected. Monitor for continued activity."
+        },
+        "yaxes": [
+          {"format": "ops", "label": "Replay Attacks/sec"},
+          {"format": "short"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.01, "color": "yellow"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Fallback Mode Status (Warning)",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "cache_integrity_violation_active{tenant_id=~\"$tenant\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.5], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "1m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Fallback Mode Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "WARNING: Fallback mode active due to integrity violation. Cache operations bypassed."
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "NORMAL"},
+              {"type": "value", "value": "1", "text": "FALLBACK"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.5, "color": "yellow"}
+              ]
+            },
+            "unit": "none"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Legacy v1 Reads (Migration Tracking)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 14, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "rate(cache_v1_read_total{tenant_id=~\"$tenant\"}[5m])",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "v1 Reads/sec"},
+          {"format": "short"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "blue"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Cache Hit Rate (Warning if < 50%)",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 14, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "cache_hit_rate{tenant_id=~\"$tenant\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.5], "type": "lt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Cache Hit Rate Alert",
+          "noDataState": "no_data",
+          "notifications": [],
+          "message": "WARNING: Cache hit rate below 50%. Poor cache effectiveness - review TTL and usage patterns."
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 0.8, "color": "green"}
+              ]
+            },
+            "unit": "percentunit"
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "tenant",
+          "type": "query",
+          "datasource": "Prometheus",
+          "query": "label_values(cache_signature_invalid_total, tenant_id)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "refresh": 1
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    }
+  }
+}

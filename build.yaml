@@ -1,0 +1,51 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Build configuration for the NeoAxios Starter Kit.
+#
+# `make build` (python -m neoaxios.build) walks every pyproject.toml under
+# the repo root for actual wheel discovery, so this file is not
+# authoritative for which wheels get built. It declares package roots for
+# tooling (capability/abstraction discovery) and Docker scan paths for
+# image builds.
+
+package_roots:
+  # Each subdirectory of neo-packages/foundation/ is an individual
+  # buildable package.
+  - path: neo-packages/foundation
+    layout: flat
+
+  # Single-package root: neoaxios-logging lives directly under neo-packages/
+  # with the importable name `telemetry`.
+  - path: neo-packages/logging
+    layout: flat
+
+  # The build driver itself.
+  - path: neo-packages/neoaxios-build
+    layout: flat
+
+# Dockerfiles owned by this codebase. Built by `make build` (which invokes
+# the build CLI with --docker; use `make build-wheels` to skip the image
+# phase).
+#
+# Images are tagged under the ``neoaxios/`` registry namespace and stored
+# under ``$NEOAXIOS_IMAGE_CACHE`` (default
+# ``~/.cache/neoaxios/.docker-image-cache``; see the top-level Makefile).
+#
+# Wildcard catches everything under base/<name>/Dockerfile, so adding a
+# new image only requires dropping its directory in. Items that have no
+# Dockerfile (deploy.yaml-only manifests like python-bench, redis-cluster)
+# are skipped automatically.
+docker_scan_paths:
+  - "neo-packages/neoaxios-build/docker/base/*/Dockerfile"

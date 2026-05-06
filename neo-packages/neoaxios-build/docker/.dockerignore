@@ -1,0 +1,38 @@
+# Docker build context ignore file
+# Prevents unnecessary files from being sent to Docker daemon
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Build artifacts (populated dynamically)
+# wheels/ is NOT ignored - it's populated by build system
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Other base image directories (avoid accidental inclusion)
+# Note: specific Dockerfiles are referenced via -f flag

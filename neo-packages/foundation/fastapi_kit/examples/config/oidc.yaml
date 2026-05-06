@@ -1,0 +1,59 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# OIDC Configuration Example
+#
+# This example shows how to configure the authentication framework
+# to use a generic OpenID Connect provider (Okta, Auth0, Keycloak, etc.).
+#
+# Usage:
+#   from neoaxios_fastapi_kit.auth.config import load_config_from_yaml
+#   config = load_config_from_yaml("oidc.yaml")
+
+# OIDC Provider Configuration
+oidc:
+  # OIDC Discovery endpoint URL
+  # This is typically the base URL + "/.well-known/openid-configuration"
+  discovery_url: "https://auth.example.com/.well-known/openid-configuration"
+
+  # OAuth2 Client ID
+  client_id: "my-client-id"
+
+  # OAuth2 Client Secret (optional for public clients)
+  # Supports direct values, file references, or environment variables:
+  # - Direct: "my-secret"
+  # - File: "file:///run/secrets/oidc-secret"
+  # - Environment: "env:OIDC_CLIENT_SECRET"
+  client_secret: "file:///run/secrets/oidc-secret"
+
+  # OAuth2 scopes to request (optional)
+  scopes:
+    - "openid"
+    - "profile"
+    - "email"
+
+  # Cache TTL for discovery document and JWKS (seconds)
+  cache_ttl_seconds: 86400  # 24 hours
+
+# Cache Configuration (optional)
+cache:
+  # Cache backend: "memory" or "redis"
+  backend: "memory"
+
+  # Cache TTL in seconds
+  ttl_seconds: 300
+
+# Resolver Configuration (optional)
+resolver_type: "local"
+resolver_merge_strategy: "union"

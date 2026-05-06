@@ -1,0 +1,89 @@
+# Production Telemetry Configuration
+# Optimized for production environments with minimal overhead
+# ERROR level only, efficient buffering, automatic rotation
+
+version: "1.0"
+
+logbook:
+  # Base configuration
+  level: ERROR                    # Only log errors in production
+  enabled: true
+  console_enabled: false          # No console output in production
+  log_dir: /var/log/app          # Standard log directory
+  log_file: application.log       # Main log file
+  format: json                    # Structured JSON for log aggregators
+
+  # Component-specific levels (override base level for specific modules)
+  component_levels:
+    "*": ERROR                    # Default: ERROR for all components
+    # Example: Enable DEBUG for specific troublesome component
+    # "myapp.payments": DEBUG
+
+  # File output configuration
+  outputs:
+    - name: main
+      type: file
+      path: /var/log/app/application.log
+      level: ERROR
+      components: "*"
+
+      # Buffering: Write-through for production (immediate writes)
+      buffer_mode: write_through
+
+      # Rotation: Size-based, 100MB files
+      rotation:
+        type: size
+        max_bytes: 104857600        # 100 MB
+        backup_count: 10            # Keep 10 rotated files
+        compress: gzip              # Compress rotated files
+
+      # Flush policy: Aggressive for production
+      flush_policy:
+        on_error: true              # Flush immediately on ERROR
+        on_warning: false           # Don't flush on WARNING
+        on_interval: 5              # Flush every 5 seconds
+        on_buffer_full: true        # Flush when buffer full
+        on_exit: true               # Flush on process exit
+
+  # Field mapping for log aggregators (optional)
+  field_mapping:
+    preset: datadog                 # Use Datadog field names
+    # Available presets: datadog, grafana, elk, none
+
+  # Exception rendering
+  exceptions:
+    format: dict                    # Structured exception data
+    include_locals: false           # Don't include local variables (security)
+    include_chain: true             # Include exception chains
+    max_frames: 50                  # Limit traceback depth
+
+  # Source location tracking
+  callsite:
+    enabled: true                   # Include filename, line, function
+    parameters:
+      - filename
+      - func_name
+      - lineno
+    additional_ignores:
+      - telemetry.logbook           # Skip internal frames
+
+  # Unicode handling
+  unicode:
+    encoding: utf-8
+    errors: replace                 # Replace invalid characters
+    fallback_encoding: latin-1
+
+  # Presets (can be loaded at runtime)
+  presets:
+    development:
+      "*": DEBUG
+    production:
+      "*": ERROR
+    troubleshooting:
+      "*": ERROR
+      # Add specific components as needed
+
+# Environment variable overrides:
+# TELEMETRY_LEVEL=ERROR
+# TELEMETRY_CONSOLE=false
+# TELEMETRY_DIR=/var/log/app

@@ -1,0 +1,479 @@
+# Copyright 2026 NeoAxios LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Keycloak OIDC Configuration Examples
+#
+# Keycloak is an open-source identity and access management solution that provides
+# OIDC/OAuth 2.0 authentication. This file shows configuration examples for:
+#
+# - Single realm setup
+# - Multi-realm configuration
+# - Realm roles and client roles
+# - Custom claims mapping
+# - Multiple Keycloak instances
+#
+# Keycloak Setup:
+# 1. Install Keycloak or use cloud-hosted instance
+# 2. Create realm: Add realm > Name > Create
+# 3. Create client: Clients > Create > Client ID, Protocol (openid-connect)
+# 4. Configure client: Access Type, Valid Redirect URIs, Web Origins
+# 5. Note realm name, client ID, and client secret (Credentials tab)
+# 6. Configure roles: Realm Roles or Client Roles
+
+---
+# =============================================================================
+# Example 1: Basic Keycloak Single Realm Configuration
+# =============================================================================
+#
+# Basic Keycloak setup for a single realm.
+#
+# Best for:
+# - Simple applications
+# - Single-tenant deployments
+# - Getting started with Keycloak
+
+keycloak_single_realm:
+  # Keycloak realm name
+  # Created in: Add realm > Name
+  # Examples: "master", "myrealm", "production"
+  realm_name: "myrealm"
+
+  # Full issuer URL (MUST include /realms/)
+  # Format: https://{host}/realms/{realm_name}
+  # Examples:
+  #   - https://keycloak.example.com/realms/myrealm
+  #   - https://auth.mycompany.com/realms/production
+  issuer: "https://keycloak.example.com/realms/myrealm"
+
+  # OAuth 2.0 client ID from Keycloak client
+  # Found in: Clients > {Your Client} > Settings > Client ID
+  # Examples: "my-app", "backend-service", "web-client"
+  client_id: "my-app"
+
+  # OAuth 2.0 client secret (for confidential clients)
+  # Found in: Clients > {Your Client} > Credentials > Secret
+  # Access Type must be "confidential" to get client secret
+  client_secret: "env:KEYCLOAK_CLIENT_SECRET"
+
+  # Expected audience claim (optional)
+  # Keycloak default audience is "account"
+  # Can also be client_id or custom audience
+  audience: "account"
+
+  # OAuth scopes (optional)
+  # Space-separated list of scopes
+  # Standard scopes: openid, profile, email
+  scope: "openid profile email"
+
+  # Clock skew tolerance (Keycloak recommendation: 30 seconds)
+  clock_skew_seconds: 30
+
+  # JWKS URI is auto-constructed from issuer
+  # Format: {issuer}/protocol/openid-connect/certs
+  # Example: https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs
+
+  # Cache configuration
+  cache:
+    backend: "memory"
+    ttl_seconds: 86400  # 24 hours
+
+---
+# =============================================================================
+# Example 2: Keycloak Multi-Realm Configuration
+# =============================================================================
+#
+# Configuration for multiple Keycloak realms in one instance.
+# Useful for multi-tenant deployments or environment separation.
+#
+# Example realms:
+# - master: Administrative realm (not for applications)
+# - development: Development environment
+# - staging: Staging environment
+# - production: Production environment
+
+keycloak_multi_realm:
+  # Development realm
+  development:
+    realm_name: "development"
+    issuer: "https://keycloak.example.com/realms/development"
+    client_id: "dev-app"
+    client_secret: "env:KEYCLOAK_DEV_SECRET"
+    audience: "account"
+
+  # Staging realm
+  staging:
+    realm_name: "staging"
+    issuer: "https://keycloak.example.com/realms/staging"
+    client_id: "staging-app"
+    client_secret: "env:KEYCLOAK_STAGING_SECRET"
+    audience: "account"
+
+  # Production realm
+  production:
+    realm_name: "production"
+    issuer: "https://keycloak.example.com/realms/production"
+    client_id: "prod-app"
+    client_secret: "file:///run/secrets/keycloak-prod-secret"
+    audience: "account"
+
+  # Shared cache configuration
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "keycloak_multi"
+
+---
+# =============================================================================
+# Example 3: Keycloak with Realm Roles and Client Roles
+# =============================================================================
+#
+# Keycloak supports two types of roles:
+# - Realm roles: Global roles across all clients in a realm
+# - Client roles: Roles specific to a single client
+#
+# Realm roles setup:
+# 1. Create roles: Realm Settings > Roles > Add Role
+# 2. Assign to users: Users > {User} > Role Mappings > Realm Roles
+#
+# Client roles setup:
+# 1. Create roles: Clients > {Client} > Roles > Add Role
+# 2. Assign to users: Users > {User} > Role Mappings > Client Roles
+
+keycloak_roles:
+  realm_name: "myrealm"
+  issuer: "https://keycloak.example.com/realms/myrealm"
+  client_id: "my-app"
+  client_secret: "env:KEYCLOAK_CLIENT_SECRET"
+  audience: "account"
+
+  # Realm roles configuration (for reference, configured in Keycloak UI)
+  realm_roles:
+    # Realm roles are included in token under "realm_access.roles"
+    roles:
+      - name: "user"
+        description: "Standard user role"
+
+      - name: "admin"
+        description: "Administrator role"
+
+      - name: "viewer"
+        description: "Read-only viewer role"
+
+    # Token claim path for realm roles
+    claim_path: "realm_access.roles"
+
+  # Client roles configuration
+  client_roles:
+    # Client roles are included in token under "resource_access.{client_id}.roles"
+    client_id: "my-app"
+    roles:
+      - name: "data_reader"
+        description: "Can read data"
+
+      - name: "data_writer"
+        description: "Can write data"
+
+      - name: "admin"
+        description: "Client administrator"
+
+    # Token claim path for client roles
+    claim_path: "resource_access.my-app.roles"
+
+---
+# =============================================================================
+# Example 4: Keycloak with Custom Claims Mapping
+# =============================================================================
+#
+# Configure custom claims in Keycloak tokens using mappers.
+#
+# Mappers setup:
+# 1. Go to: Clients > {Client} > Mappers > Create
+# 2. Choose Mapper Type:
+#    - User Property: Map user attribute to claim
+#    - User Attribute: Map custom user attribute
+#    - Group Membership: Map user groups
+#    - Role Name: Map role to claim
+# 3. Configure claim name and token type
+
+keycloak_custom_claims:
+  realm_name: "myrealm"
+  issuer: "https://keycloak.example.com/realms/myrealm"
+  client_id: "my-app"
+  client_secret: "env:KEYCLOAK_CLIENT_SECRET"
+  audience: "account"
+
+  # Custom mappers configuration (for reference, configured in Keycloak UI)
+  mappers:
+    # Department mapper (User Attribute)
+    department:
+      mapper_type: "User Attribute"
+      user_attribute: "department"
+      claim_name: "department"
+      claim_json_type: "String"
+      add_to_id_token: true
+      add_to_access_token: true
+      add_to_userinfo: true
+
+    # Manager mapper (User Property)
+    manager:
+      mapper_type: "User Property"
+      property: "manager"
+      claim_name: "manager"
+      claim_json_type: "String"
+      add_to_id_token: true
+
+    # Groups mapper (Group Membership)
+    groups:
+      mapper_type: "Group Membership"
+      claim_name: "groups"
+      full_group_path: false  # Use group name only, not full path
+      add_to_id_token: true
+      add_to_access_token: true
+
+    # Custom roles mapper (Realm Role)
+    custom_roles:
+      mapper_type: "Role Name Mapper"
+      role_name_prefix: "APP_"  # Only include roles with this prefix
+      claim_name: "app_roles"
+      claim_json_type: "String"
+      add_to_access_token: true
+
+---
+# =============================================================================
+# Example 5: Keycloak Multiple Instances
+# =============================================================================
+#
+# Configuration for multiple Keycloak instances (e.g., different environments).
+# Useful for high availability or geographic distribution.
+
+keycloak_multiple_instances:
+  # US East instance
+  us_east:
+    realm_name: "production"
+    issuer: "https://keycloak-us-east.example.com/realms/production"
+    client_id: "prod-app"
+    client_secret: "env:KEYCLOAK_US_SECRET"
+    audience: "account"
+
+  # US West instance
+  us_west:
+    realm_name: "production"
+    issuer: "https://keycloak-us-west.example.com/realms/production"
+    client_id: "prod-app"
+    client_secret: "env:KEYCLOAK_US_SECRET"
+    audience: "account"
+
+  # Europe instance
+  europe:
+    realm_name: "production"
+    issuer: "https://keycloak-eu.example.com/realms/production"
+    client_id: "prod-app"
+    client_secret: "env:KEYCLOAK_EU_SECRET"
+    audience: "account"
+
+  # Shared cache
+  cache:
+    backend: "redis"
+    ttl_seconds: 86400
+    redis:
+      url: "env:REDIS_URL"
+      prefix: "keycloak_geo"
+
+---
+# =============================================================================
+# Environment Variable Reference for Keycloak
+# =============================================================================
+
+environment_variables:
+  # Required variables
+  KEYCLOAK_REALM_NAME:
+    description: "Keycloak realm name"
+    example: "myrealm"
+    required: true
+
+  KEYCLOAK_ISSUER:
+    description: "Full issuer URL with /realms/ path"
+    example: "https://keycloak.example.com/realms/myrealm"
+    required: true
+    format: "https://{host}/realms/{realm_name}"
+
+  KEYCLOAK_CLIENT_ID:
+    description: "OAuth 2.0 client ID from Keycloak client"
+    example: "my-app"
+    required: true
+
+  # Optional variables
+  KEYCLOAK_CLIENT_SECRET:
+    description: "OAuth 2.0 client secret (confidential clients only)"
+    example: "secret_abc123..."
+    required: false
+    security: "Store securely, never commit to source control"
+    note: "Only for confidential clients (Access Type: confidential)"
+
+  KEYCLOAK_AUDIENCE:
+    description: "Expected audience claim"
+    default: "account"
+    example: "my-api"
+    required: false
+
+  KEYCLOAK_SCOPE:
+    description: "OAuth scopes (space-separated)"
+    default: "openid profile email"
+    example: "openid profile email roles"
+    required: false
+
+  # Cache configuration
+  REDIS_URL:
+    description: "Redis connection URL for caching"
+    example: "redis://localhost:6379"
+    required: false
+
+---
+# =============================================================================
+# Keycloak Token Claims Reference
+# =============================================================================
+
+token_claims:
+  # Standard OIDC claims
+  standard:
+    sub:
+      description: "Subject (Keycloak user ID)"
+      example: "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+      type: "string (UUID)"
+
+    iss:
+      description: "Issuer (Keycloak realm URL)"
+      example: "https://keycloak.example.com/realms/myrealm"
+      type: "string"
+      format: "https://{host}/realms/{realm_name}"
+
+    aud:
+      description: "Audience (client_id or 'account')"
+      example: "account"
+      type: "string or array"
+
+    exp:
+      description: "Expiration timestamp"
+      example: 1609459200
+      type: "integer (Unix timestamp)"
+
+    iat:
+      description: "Issued at timestamp"
+      example: 1609455600
+      type: "integer (Unix timestamp)"
+
+  # Keycloak-specific claims
+  keycloak_specific:
+    azp:
+      description: "Authorized party (client_id)"
+      example: "my-app"
+      type: "string"
+
+    scope:
+      description: "OAuth scopes (space-separated)"
+      example: "openid profile email"
+      type: "string"
+
+    email_verified:
+      description: "Email verification status"
+      example: true
+      type: "boolean"
+
+    preferred_username:
+      description: "Username for display"
+      example: "john.doe"
+      type: "string"
+
+    given_name:
+      description: "User's first name"
+      example: "John"
+      type: "string"
+
+    family_name:
+      description: "User's last name"
+      example: "Doe"
+      type: "string"
+
+    realm_access:
+      description: "Realm-level role assignments"
+      example:
+        roles: ["user", "admin"]
+      type: "object"
+      structure:
+        roles: "array of role names"
+
+    resource_access:
+      description: "Client-specific role assignments"
+      example:
+        my-app:
+          roles: ["data_reader", "data_writer"]
+      type: "object"
+      structure:
+        "{client_id}":
+          roles: "array of role names"
+
+  # Custom claims (configured via mappers)
+  custom:
+    department:
+      description: "User's department"
+      example: "Engineering"
+      type: "string"
+      mapper: "User Attribute"
+
+    groups:
+      description: "User's group memberships"
+      example: ["Developers", "Admins"]
+      type: "array"
+      mapper: "Group Membership"
+
+---
+# =============================================================================
+# Keycloak Client Access Types
+# =============================================================================
+#
+# Keycloak supports three client access types:
+
+access_types:
+  # Confidential clients (backend applications)
+  confidential:
+    description: "Clients that can securely store client secret"
+    use_for: "Backend APIs, server-side web applications"
+    has_client_secret: true
+    token_endpoint_auth_methods: ["client_secret_basic", "client_secret_post"]
+    example_config:
+      client_id: "backend-service"
+      client_secret: "env:KEYCLOAK_CLIENT_SECRET"
+
+  # Public clients (frontend applications)
+  public:
+    description: "Clients that cannot securely store client secret"
+    use_for: "SPAs, mobile apps, native applications"
+    has_client_secret: false
+    token_endpoint_auth_methods: ["none"]
+    requires_pkce: true
+    example_config:
+      client_id: "spa-app"
+      client_secret: null  # No secret for public clients
+
+  # Bearer-only (resource servers)
+  bearer_only:
+    description: "Clients that only validate bearer tokens"
+    use_for: "Microservices, resource servers"
+    has_client_secret: false
+    cannot_request_tokens: true
+    example_config:
+      client_id: "api-service"
+      access_type: "bearer-only"

@@ -1,0 +1,6 @@
+# Minimal .dockerignore for postgresql-pgbouncer image
+# .dockerignore is required by build system
+
+# Build artifacts
+*.md
+docker.yaml
