@@ -52,6 +52,14 @@ RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/generate-pgbouncer-user
 # PGDATA set to subdirectory to avoid initdb warning about non-empty mount point
 ENV PGDATA=/var/lib/postgresql/data/pgdata
 
+# Container log volume. TestGrid bind-mounts /mnt/data/neo/logs and injects
+# --user {testbot uid:gid} into every container; the entrypoint's legacy
+# default LOG_DIR base of /var/log/neo crashes under that uid because
+# /var/log/ is not writable to non-root. Aligning the env default with the
+# bind-mounted path lets the entrypoint's mkdir succeed without a chmod
+# step at deploy time.
+ENV CONTAINER_LOG_DIR=/mnt/data/neo/logs
+
 EXPOSE 5432 6432
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \

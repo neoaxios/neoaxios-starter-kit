@@ -26,7 +26,20 @@ set -e
 
 # ── 3rdparty log collection ──────────────────────────────────────────
 LOG_DIR="${CONTAINER_LOG_DIR:-/var/log/neo}/$(hostname)/3rdparty/postgresql"
-mkdir -p "$LOG_DIR"
+# Best-effort log directory creation: when the container runs under
+# TestGrid's --user 997:984 injection, the testbot uid cannot create
+# directories under /var/log/ if the log volume isn't bind-mounted. If
+# mkdir fails, leave on-disk logs at /dev/null — stdout still flows
+# through `docker logs` via tee. A hard failure here would crash every
+# deployment that doesn't pre-create the mount, with no diagnostic in
+# `docker logs` except the mkdir error.
+if mkdir -p "$LOG_DIR" 2>/dev/null; then
+    PG_LOG_FILE="$LOG_DIR/postgresql.log"
+    PGBOUNCER_LOG_FILE="$LOG_DIR/pgbouncer.log"
+else
+    PG_LOG_FILE=/dev/null
+    PGBOUNCER_LOG_FILE=/dev/null
+fi
 
 # ── Clean stale PID from previous container run ──────────────────────
 PGDATA="${PGDATA:-/var/lib/postgresql/data/pgdata}"
@@ -41,7 +54,7 @@ PGDATA="$PGDATA" docker-entrypoint.sh postgres \
     -c tcp_keepalives_idle=60 \
     -c tcp_keepalives_interval=10 \
     -c tcp_keepalives_count=3 \
-    2>&1 | tee "$LOG_DIR/postgresql.log" &
+    2>&1 | tee "$PG_LOG_FILE" &
 PG_PID=$!
 
 # ── Wait for PostgreSQL readiness ────────────────────────────────────
@@ -88,10 +101,10 @@ fi
 echo "Starting PgBouncer on port 6432..."
 if [ "$(id -u)" = "0" ]; then
     su-exec postgres /usr/local/bin/generate-pgbouncer-userlist.sh
-    su-exec postgres pgbouncer /etc/pgbouncer/pgbouncer.ini 2>&1 | tee "$LOG_DIR/pgbouncer.log" &
+    su-exec postgres pgbouncer /etc/pgbouncer/pgbouncer.ini 2>&1 | tee "$PGBOUNCER_LOG_FILE" &
 else
     /usr/local/bin/generate-pgbouncer-userlist.sh
-    pgbouncer /etc/pgbouncer/pgbouncer.ini 2>&1 | tee "$LOG_DIR/pgbouncer.log" &
+    pgbouncer /etc/pgbouncer/pgbouncer.ini 2>&1 | tee "$PGBOUNCER_LOG_FILE" &
 fi
 PGBOUNCER_PID=$!
 
