@@ -83,7 +83,7 @@ Configuration Usage:
     print(f"Performance tracking: {config.performance.enabled}")
 """
 
-__version__ = "1.1.0"
+__version__ = "0.2.1"
 
 # Core Logbook exports
 from .logbook import (
