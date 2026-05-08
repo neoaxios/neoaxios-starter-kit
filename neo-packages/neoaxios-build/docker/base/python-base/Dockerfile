@@ -34,11 +34,16 @@ ARG WHEELS_HASH
 # Copy wheels (populated by build system)
 COPY wheels/ /wheels/
 
-# Install foundation/shared packages (uv inherited from python-slim)
-# Cache ID includes WHEELS_HASH so cache is invalidated when wheels change
-# Note: secure_config and neoaxios-logging are inherited from python-slim
-RUN --mount=type=cache,id=uv-neoaxios-base,target=/root/.cache/uv \
-    uv pip install --system --find-links=/wheels/ \
+# Install foundation/shared packages (uv inherited from python-slim).
+# Two-prong WHEELS_HASH cache invalidation (enforced by neoaxios-build's
+# DockerfileLinter): (1) cache-mount id is suffixed with ${WHEELS_HASH}
+# so uv's per-version extraction cache is keyed per wheel set; (2) the
+# RUN body echoes ${WHEELS_HASH} so BuildKit's layer cache key changes
+# when wheels change (BuildKit excludes --mount metadata from cache keys).
+# Note: secure_config and neoaxios-logging are inherited from python-slim.
+RUN --mount=type=cache,id=uv-neoaxios-base-${WHEELS_HASH},target=/root/.cache/uv \
+    echo "wheels_hash=${WHEELS_HASH}" \
+    && uv pip install --system --find-links=/wheels/ \
     # Foundation packages only (not in python-slim).
     # Application packages (neoaxios_fastapi_kit, sse-kit, etc.) install in their
     # own derived images, not here — see the Dockerfile header principle.

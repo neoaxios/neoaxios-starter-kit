@@ -44,11 +44,17 @@ ARG WHEELS_HASH
 # Copy wheels (populated by build system before docker build)
 COPY wheels/ /wheels/
 
-# Install secure_config for runtime resource detection (CPU, RAM, workers)
-# This enables init_system_resources() in entrypoint-lib.sh
-# Note: neoaxios-logging is a dependency of secure_config
-RUN --mount=type=cache,id=uv-python-slim,target=/root/.cache/uv \
-    uv pip install --system --find-links=/wheels/ \
+# Install secure_config for runtime resource detection (CPU, RAM, workers).
+# This enables init_system_resources() in entrypoint-lib.sh.
+# Note: neoaxios-logging is a dependency of secure_config.
+# Two-prong WHEELS_HASH cache invalidation (enforced by neoaxios-build's
+# DockerfileLinter): (1) cache-mount id is suffixed with ${WHEELS_HASH}
+# so uv's per-version extraction cache is keyed per wheel set; (2) the
+# RUN body echoes ${WHEELS_HASH} so BuildKit's layer cache key changes
+# when wheels change (BuildKit excludes --mount metadata from cache keys).
+RUN --mount=type=cache,id=uv-python-slim-${WHEELS_HASH},target=/root/.cache/uv \
+    echo "wheels_hash=${WHEELS_HASH}" \
+    && uv pip install --system --find-links=/wheels/ \
     neoaxios-secure-config \
     neoaxios-logging \
     && rm -rf /wheels/
