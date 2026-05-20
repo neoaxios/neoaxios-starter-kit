@@ -258,6 +258,14 @@ class VaultSecretStore:
         need a forced refresh should call :meth:`rotate_secret` first.
         """
         key_tag = _hash_key(key)
+        # Hold _lock across the Vault round-trip. Releasing it between the
+        # miss-check and the cache-fill created a stale-fill race: an
+        # in-flight reader carrying V1 could write V1 back into the cache
+        # AFTER rotate_secret had popped the entry, locking subsequent
+        # reads to V1 for the rest of the TTL. _fetch_from_vault awaits
+        # _login_lock (a separate lock), so this does not deadlock, and
+        # concurrent missers now coalesce into one Vault round-trip
+        # instead of N.
         async with self._lock:
             entry = self._cache.get(key)
             if entry is not None and entry.expires_at > time.monotonic():
@@ -266,20 +274,16 @@ class VaultSecretStore:
                     context={"key_tag": key_tag, "source": "cache"},
                 )
                 return entry.value
-
-        # Miss or expired: fetch under the login lock so only one task pays
-        # the cost on first use (or after a TTL tick).
-        value = await self._fetch_from_vault(key)
-        async with self._lock:
+            value = await self._fetch_from_vault(key)
             self._cache[key] = _CacheEntry(
                 value=value,
                 expires_at=time.monotonic() + self._config.cache_ttl_seconds,
             )
-        logger.info(
-            "secret_store_cache_miss_filled",
-            context={"key_tag": key_tag, "ttl_seconds": self._config.cache_ttl_seconds},
-        )
-        return value
+            logger.info(
+                "secret_store_cache_miss_filled",
+                context={"key_tag": key_tag, "ttl_seconds": self._config.cache_ttl_seconds},
+            )
+            return value
 
     @auto_trace(logger)
     async def rotate_secret(self, key: str) -> None:
