@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neoaxios-fastapi-kit"
-version = "0.2.1"
+version = "0.2.2"
 description = "Production toolkit for FastAPI services: auth, middleware, telemetry, and operational best practices"
 readme = "README.md"
 requires-python = ">=3.8"

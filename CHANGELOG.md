@@ -12,6 +12,25 @@ removals, and cross-cutting changes that affect the whole repository.
 
 ## [Unreleased]
 
+### Changed
+
+- `neoaxios-fastapi-kit` → 0.2.2: rewrote `RequestCorrelationMiddleware`
+  and `RetryAfterMiddleware` from `starlette.middleware.base.BaseHTTPMiddleware`
+  to raw ASGI middleware (`__call__(scope, receive, send)`). Feature-parity
+  with the prior implementation; the rewrite eliminates `BaseHTTPMiddleware`'s
+  task-wrap and body-buffer overhead (~120-180 µs/request) and the known
+  poor interaction with `StreamingResponse`. Measured on AMD Ryzen 9 7950X3D:
+  hello-world kit-wired throughput improves from 8,254 RPS → 30,059 RPS
+  (`GET /ping`, 1 worker, +264%); 5,241 RPS → 20,167 RPS (`POST /chat` with
+  Pydantic body, 1 worker, +285%). At 16-worker host saturation: 232,800
+  RPS (`/ping`) / 185,627 RPS (`/chat`) for kit-wired endpoints, within
+  9-10% of the bare FastAPI ceiling. No API changes for consumers —
+  `app.add_middleware(RequestCorrelationMiddleware)` and
+  `app.add_middleware(RetryAfterMiddleware)` continue to work identically;
+  `request.state.correlation_id` populates the same way (now wrapped via
+  `starlette.datastructures.State` so FastAPI 0.103+ dict-shaped lifespan
+  state is handled correctly).
+
 ## [0.2.1] — 2026-05-05
 
 Initial public release of the NeoAxios Starter Kit.

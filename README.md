@@ -33,7 +33,7 @@ installable on its own — pick the pieces you want, leave the rest.
 | [`neoaxios-stripe-kit`](neo-packages/foundation/stripe_kit/) | Structured error taxonomy and translator for the Stripe Python SDK — uniform exception handling with retryable/non-retryable distinction preserved. *(Early-stage; expected to grow.)* | 0.0.1 |
 | [`neoaxios-resilience-kit`](neo-packages/foundation/resilience-kit/) | Resilience primitives for distributed services: rate limiting (fixed window, sliding window, token bucket), distributed circuit breaker, async retry with deadlines. | 0.2.1 |
 | [`neoaxios-test-foundation`](neo-packages/foundation/test-foundation/) | Shared pytest infrastructure: fixtures, mocks (LLM server, SSH server, generic service endpoint), Redis test utilities, namespace management, latency statistics. | 0.2.1 |
-| [`neoaxios-fastapi-kit`](neo-packages/foundation/fastapi_kit/) | FastAPI toolkit: authentication, authorization, rate limiting, request correlation, idempotency, security headers, structured errors. | 0.2.1 |
+| [`neoaxios-fastapi-kit`](neo-packages/foundation/fastapi_kit/) | FastAPI toolkit: authentication, authorization, rate limiting, request correlation, idempotency, security headers, structured errors. | 0.2.2 |
 | [`neoaxios-sse-kit`](neo-packages/foundation/sse-kit/) | Server-Sent Events (W3C `text/event-stream`) parsing and serialization. | 0.2.1 |
 | [`neoaxios-build-system`](neo-packages/neoaxios-build/) | Dependency-aware parallel build orchestrator with hash-based caching for Python wheels and Docker images. | 0.2.1 |
 

@@ -81,7 +81,7 @@ from .middleware import (
 )
 from .shutdown import add_graceful_shutdown, create_graceful_shutdown_lifespan
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     # Endpoints
